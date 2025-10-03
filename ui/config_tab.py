@@ -27,11 +27,7 @@ class ConfigTab(QWidget):
 
         # TLS Enable checkbox
         self.tls_checkbox = QCheckBox("Enable TLS")
-        self.tls_checkbox.setChecked(bool(
-            self.config.get("ca_cert_path") or
-            self.config.get("client_cert_path") or
-            self.config.get("client_key_path")
-        ))
+        self.tls_checkbox.setChecked(self.config.get("tls", False))
         self.tls_checkbox.stateChanged.connect(self._toggle_tls_inputs)
         layout.addRow(self.tls_checkbox)
 
