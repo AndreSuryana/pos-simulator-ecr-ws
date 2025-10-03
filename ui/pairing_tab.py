@@ -1,7 +1,10 @@
 from PyQt5.QtWidgets import QWidget, QFormLayout, QLineEdit, QPushButton, QMessageBox
+from PyQt5.QtCore import pyqtSignal
 
 
 class PairingTab(QWidget):
+    pairing_requested = pyqtSignal(str, str)
+
     def __init__(self):
         super().__init__()
         layout = QFormLayout()
@@ -27,5 +30,5 @@ class PairingTab(QWidget):
         if not edc_id or not pair_code:
             QMessageBox.warning(self, "Error", "EDC ID and Pair Code required")
             return
-        # TODO: Later emit a signal or call injected handler
-        QMessageBox.information(self, "Pairing", f"Paired with EDC {edc_id}")
+        
+        self.pairing_requested.emit(edc_id, pair_code)

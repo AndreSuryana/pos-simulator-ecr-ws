@@ -23,13 +23,16 @@ class MainWindow(QWidget):
         # Config
         self.config = ConfigManager()
 
-        # Tabs
-        self.tabs = QTabWidget()
+        # Pairing tabs
         self.pairing_tab = PairingTab()
+        self.pairing_tab.pairing_requested.connect(self._pair_device)
+
         self.transaction_tab = TransactionTab()
         self.logs_tab = LogsTab()
         self.config_tab = ConfigTab(self.config)
 
+        # Tabs
+        self.tabs = QTabWidget()
         self.tabs.addTab(self.pairing_tab, "Pairing")
         self.tabs.addTab(self.transaction_tab, "Transaction")
         self.tabs.addTab(self.logs_tab, "Logs")
@@ -121,6 +124,14 @@ class MainWindow(QWidget):
         
         self.async_run(task())
 
+    def _pair_device(self, edc_id: str, pair_code: str):
+        async def task():
+            pairingPayload = self.payload.make_pair(edc_id, pair_code)
+            await self.client.send(pairingPayload)
+            self.logs_tab.add_log(pairingPayload)
+        
+        self.async_run(task())
+
     async def listen_messages(self):
         try:
             while True:
@@ -135,10 +146,14 @@ class MainWindow(QWidget):
                     if msg_type == "REGISTER_POS_DONE":
                         self.bottom_bar.update_status("Ready", "green")
 
+                    elif msg_type == "PAIR_POS_DONE":
+                        edc_id = parsed.get("data", {}).get("edc_id")
+                        QMessageBox.information(self, "Pairing", f"Paired with EDC {edc_id}")
+
                     elif msg_type == "ERROR":
-                        code = parsed.get("data", {}).get("code", -1)
+                        code = parsed.get("data", {}).get("reason_code", -1)
                         reason = parsed.get("data", {}).get("reason", "Unknown error")
-                        self.bottom_bar.update_status(f"Error: {code} - {reason}", "red")
+                        QMessageBox.warning(self, "Error", f"{code} - {reason}")
 
                 except json.JSONDecodeError:
                     self.logs_tab.add_log("Invalid JSON received", incoming=True, error=True)
