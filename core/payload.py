@@ -1,6 +1,6 @@
 import uuid
 import json
-from signer import Signer
+from core.signer import Signer
 
 class Payload:
     def __init__(self, api_key: str, signer: Signer):
