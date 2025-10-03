@@ -3,3 +3,4 @@ websockets
 qasync
 ecdsa
 cryptography
+nuitka

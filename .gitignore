@@ -1,5 +1,22 @@
 # Python cache
-__pycache__
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Ignore config
+# Nuitka / PyInstaller build artifacts
+build/
+dist/
+*.build/
+*.dist/
+*.onefile-build/
+*.spec
+*.bin
+*.exe
+
+# IDE/Editor config
+.vscode/
+.idea/
+
+# Ignore app config
 config.json
