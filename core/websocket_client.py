@@ -24,12 +24,17 @@ class WebSocketClient:
             if self.client_cert and self.client_key:
                 ssl_context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)
 
-        self.ws = await websockets.connect(self.url, ssl=ssl_context)
+        self.ws = await websockets.connect(
+            uri=self.url,
+            ssl=ssl_context,
+            ping_interval=None,  # FIXME: Temporary, move me to config tab!
+            ping_timeout=None    # FIXME: Temporary, move me to config tab!
+        )
 
-    async def send(self, payload: dict):
+    async def send(self, message: str):
         if self.ws is None:
             raise Exception("WebSocket not connected")
-        await self.ws.send(json.dumps(payload))
+        await self.ws.send(message)
 
     async def receive(self):
         if self.ws is None:
