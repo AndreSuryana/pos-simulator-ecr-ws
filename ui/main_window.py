@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QMessageBox
 from core.payload import Payload
 from core.websocket_client import WebSocketClient
 from core.config import ConfigManager
+from core.signer import Signer
 from ui.bottom_bar import BottomBar
 from ui.pairing_tab import PairingTab
 from ui.transaction_tab import TransactionTab
@@ -21,12 +22,6 @@ class MainWindow(QWidget):
 
         # Config
         self.config = ConfigManager()
-        self.client: WebSocketClient | None = None
-        self.payload = Payload(
-            api_key=self.config.get("api_key"),
-            private_key=self.config.get("private_key")
-        )
-        self.edc_id = None
 
         # Tabs
         self.tabs = QTabWidget()
@@ -50,6 +45,25 @@ class MainWindow(QWidget):
         layout.addWidget(self.tabs)
         layout.addWidget(self.bottom_bar)
         self.setLayout(layout)
+
+        # Check for configuration, ensure it exists
+        if not self.config.get("api_key") or not self.config.get("private_key"):
+            QMessageBox.warning(
+                self,
+                "Configuration Required",
+                "API Key and Private Key are missing.\n"
+                "Please configure them before using the simulator."
+            )
+            # Go to Config tab
+            self.tabs.setCurrentWidget(self.config_tab)
+            return
+
+        self.client: WebSocketClient | None = None
+        self.payload = Payload(
+            api_key=self.config.get("api_key"),
+            signer=Signer(self.config.get("private_key"))
+        )
+        self.edc_id = None
 
     def async_run(self, coro):
         asyncio.ensure_future(coro)

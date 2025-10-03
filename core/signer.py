@@ -9,7 +9,7 @@ class Signer:
         # Normalize PEM
         pem = private_key_pem.strip()
 
-       # Validate PEM
+        # Validate PEM
         if not pem.startswith("-----BEGIN EC PRIVATE KEY-----"):
             raise ValueError("Invalid PEM: missing BEGIN EC PRIVATE KEY")
         if not pem.endswith("-----END EC PRIVATE KEY-----"):

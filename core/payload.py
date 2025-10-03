@@ -1,11 +1,11 @@
 import uuid
 import json
-from .signer import Signer
+from signer import Signer
 
 class Payload:
-    def __init__(self, api_key: str, private_key: str):
+    def __init__(self, api_key: str, signer: Signer):
         self.api_key = api_key
-        self.signer = Signer(private_key)
+        self.signer = signer
 
     def _make(self, type: str, data: dict) -> str:
         return json.dumps({
