@@ -20,8 +20,11 @@ class MainWindow(QWidget):
         self.resize(1000, 650)
         self.setMinimumSize(800, 500)
 
-        # Config
         self.config = ConfigManager()
+
+        self.client: WebSocketClient | None = None
+        self.payload: Payload | None = None
+        self.edc_id: str | None = None
 
         # Pairing tabs
         self.pairing_tab = PairingTab()
@@ -40,8 +43,8 @@ class MainWindow(QWidget):
 
         # Bottom bar
         self.bottom_bar = BottomBar(self.config)
-        self.bottom_bar.connect_requested.connect(self.connect_and_register)
-        self.bottom_bar.disconnect_requested.connect(self.disconnect_client)
+        self.bottom_bar.connect_requested.connect(self._connect_and_register)
+        self.bottom_bar.disconnect_requested.connect(self._disconnect_client)
 
         # Layout
         layout = QVBoxLayout()
@@ -57,22 +60,28 @@ class MainWindow(QWidget):
                 "API Key and Private Key are missing.\n"
                 "Please configure them before using the simulator."
             )
-            # Go to Config tab
             self.tabs.setCurrentWidget(self.config_tab)
-            return
 
-        self.client: WebSocketClient | None = None
-        self.payload = Payload(
-            api_key=self.config.get("api_key"),
-            signer=Signer(self.config.get("private_key"))
-        )
-        self.edc_id = None
+    def _ensure_payload(self) -> bool:
+        """Make sure Payload is created from current config."""
+        api_key = self.config.get("api_key")
+        private_key = self.config.get("private_key")
+
+        if not api_key or not private_key:
+            QMessageBox.warning(self, "Missing Config", "API Key or Private Key missing")
+            self.tabs.setCurrentWidget(self.config_tab)
+            return False
+
+        self.payload = Payload(api_key=api_key, signer=Signer(private_key))
+        return True
 
     def async_run(self, coro):
         asyncio.ensure_future(coro)
 
-    def connect_and_register(self, url: str):
+    def _connect_and_register(self, url: str):
         async def task():
+            if not self._ensure_payload():
+                return
             try:
                 self.bottom_bar.update_status("Connecting...", "orange")
                 self.logs_tab.add_log(f"Connecting to {url}...")
@@ -114,7 +123,7 @@ class MainWindow(QWidget):
 
         self.async_run(task())
 
-    def disconnect_client(self):
+    def _disconnect_client(self):
         async def task():
             if self.client and self.client.ws is not None:
                 await self.client.ws.close()
