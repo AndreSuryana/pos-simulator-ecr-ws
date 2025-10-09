@@ -7,6 +7,7 @@ from services import WebSocketService
 from utils.config import ConfigManager
 from utils.payload import SignedPayload
 from views import MainWindow
+from views.tabs import LogType
 
 class MainController:
 
@@ -61,13 +62,16 @@ class MainController:
         
     def _on_websocket_open(self):
         print("[INFO] WebSocket opened")
+        self.view.logs_tab.add_info("WebSocket opened")
         self._register()
     
     def _on_websocket_send(self, message: str):
         print(f"[INFO] WebSocket send: {message}")
+        self.view.logs_tab.add_log(LogType.OUTGOING, message)
     
     def _on_websocket_message(self, message: str):
         print(f"[INFO] WebSocket received: {message}")
+        self.view.logs_tab.add_log(LogType.INCOMING, message)
         
         try:
             parsed = json.loads(message)
@@ -88,9 +92,11 @@ class MainController:
     
     def _on_websocket_close(self):
         print("[INFO] WebSocket closed")
+        self.view.logs_tab.add_error("WebSocket closed")
     
     def _on_websocket_error(self, e: Exception):
         print(f"[ERROR] WebSocket error: {e}")
+        self.view.logs_tab.add_error(f"WebSocket error: {e}")
     
     def _check_config(self):
         # WebSocket URL for bottom bar
