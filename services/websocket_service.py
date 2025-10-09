@@ -80,5 +80,3 @@ class WebSocketService:
         if self.ws:
             await self.ws.close()
             self.ws = None
-            if self.on_close:
-                self.on_close()

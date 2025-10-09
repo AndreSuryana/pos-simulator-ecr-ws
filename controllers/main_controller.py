@@ -9,6 +9,7 @@ from utils.payload import SignedPayload
 from views import MainWindow
 from views.tabs import LogType
 
+
 class MainController:
 
     def __init__(self, app: QApplication, view: MainWindow, config: ConfigManager):
@@ -51,7 +52,10 @@ class MainController:
         asyncio.create_task(connect_task())
         
     def _disconnect_websocket(self):
-        asyncio.run(self.websocket_service.close)
+        async def disconnect_task():
+            await self.websocket_service.close()
+
+        asyncio.create_task(disconnect_task())
     
     def _connect_service_events(self):
         self.websocket_service.on_open = self._on_websocket_open
@@ -93,10 +97,12 @@ class MainController:
     def _on_websocket_close(self):
         print("[INFO] WebSocket closed")
         self.view.logs_tab.add_error("WebSocket closed")
+        self.view.bottom_bar.set_status_label("Disconnected", "red")
     
     def _on_websocket_error(self, e: Exception):
         print(f"[ERROR] WebSocket error: {e}")
         self.view.logs_tab.add_error(f"WebSocket error: {e}")
+        self.view.bottom_bar.set_status_label("Disconnected", "red")
     
     def _check_config(self):
         # WebSocket URL for bottom bar
