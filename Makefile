@@ -22,7 +22,7 @@ build: $(OUT_EXE)
 
 # Rule: how to make the exe
 $(OUT_EXE): $(ENTRY)
-	$(NUITKA) $(NUITKA_FLAGS) --output-dir=$(OUT_DIR) --output-filename=$(APP_NAME).exe $(ENTRY)
+	$(NUITKA) $(NUITKA_FLAGS) --output-dir=$(OUT_DIR) --output-filename=$(APP_NAME)_$(APP_VERSION).exe $(ENTRY)
 
 # Run only builds if exe missing
 run: $(OUT_EXE)
