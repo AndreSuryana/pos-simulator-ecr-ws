@@ -1,3 +1,4 @@
+import version
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget
 )
@@ -11,7 +12,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("POS Simulator")
+        self.setWindowTitle(version.APP_TITLE)
         self.resize(1000, 650)
         self.setMinimumSize(800, 500)
 

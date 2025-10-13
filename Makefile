@@ -1,5 +1,6 @@
-# Application name
-APP_NAME = POS_Simulator
+# Application metadata
+APP_NAME := $(shell python -c "import version; print(version.APP_NAME.replace(' ', '_'))")
+APP_VERSION := $(shell python -c "import version; print(version.APP_VERSION)")
 ENTRY = app.py
 
 # Nuitka options
@@ -11,7 +12,7 @@ NUITKA_FLAGS = --standalone --onefile --enable-plugin=pyqt5 --windows-console-mo
 
 # Output dirs
 OUT_DIR = dist
-OUT_EXE = $(OUT_DIR)/$(APP_NAME).exe
+OUT_EXE = $(OUT_DIR)/$(APP_NAME)_$(APP_VERSION).exe
 
 # Default target
 all: build
