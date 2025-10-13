@@ -1,4 +1,5 @@
 import asyncio
+from .device_controller import DeviceController
 from common import TransactionType
 from models import Transaction
 from PyQt5.QtWidgets import QMessageBox
@@ -8,24 +9,24 @@ from utils.payload import SignedPayload
 from views.tabs import TransactionTab
 
 
-class TransactionController:
-    def __init__(self, view: TransactionTab, client: WebSocketService, pos_id: str, payload: SignedPayload | None = None):
+class TransactionController(DeviceController):
+    def __init__(self, view: TransactionTab, client: WebSocketService, payload: SignedPayload | None = None):
         self.view = view
         self.client = client
-        self.pos_id = pos_id
         self.payload = payload
         
         # Connect signals
         self.view.send_clicked.connect(self._send_transaction)
         self.view.refresh_clicked.connect(self.get_active_edc_devices)
         
-    def set_payload(self, payload: SignedPayload):
-        self.payload = payload
-        
     def _send_transaction(self, type: TransactionType, edc_id: str, trx: Transaction):
         async def trx_task():
             if not edc_id:
                 QMessageBox.warning(self.view, "Missing Information", "EDC ID is required.")
+                return
+            
+            if not self.client.ws:
+                QMessageBox.warning(self.view, "Connection Error", "WebSocket not connected")
                 return
             
             data_field: dict = {}
@@ -53,14 +54,6 @@ class TransactionController:
             
         asyncio.create_task(trx_task())
         
-    def get_active_edc_devices(self):
-        async def get_task():
-            if self.client.ws and self.pos_id:
-                data = self.payload.make("GET_LIST_EDC", { "pos_id": self.pos_id })
-                await self.client.send(data)
-        
-        asyncio.create_task(get_task())
-        
     def on_transaction_response(self, edc_id: str, resp: dict):
         # TODO: Show in the transaction logs (not yet created)
 
@@ -75,19 +68,3 @@ class TransactionController:
             "Transaction Response",
             f"{response_code} - {response_message}"
         )
-        
-    def on_edc_devices_response(self, data_list):
-        devices = []
-        
-        if not data_list and self.view.isVisible():
-            QMessageBox.warning(
-                self.view,
-                "Missing Information",
-                "No EDC devices paired to this POS."
-            )
-            return
-        
-        for item in data_list:
-            devices.append(item.get("edc_id"))
-        
-        self.view.set_edc_devices(devices)

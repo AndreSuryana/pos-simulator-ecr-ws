@@ -49,7 +49,7 @@ class BottomBar(QWidget):
         if label == _BTN_CONNECT:
             url = self.url_input.text().strip()
             if not url:
-                QMessageBox.warning(self, "Connect Error", "Enter WebSocket URL first.")
+                QMessageBox.warning(self, "Connection Error", "Enter WebSocket URL first.")
                 return
             
             self.connect_clicked.emit(url)

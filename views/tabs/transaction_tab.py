@@ -136,11 +136,7 @@ class TransactionTab(QWidget):
 
     def _on_send_clicked(self):
         if not self.edc_id:
-            QMessageBox.warning(
-                self,
-                "Missing Information",
-                "Please select EDC ID first."
-            )
+            QMessageBox.warning(self, "Missing Information", "Please select EDC ID first.")
             return
         
         type: TransactionType = self.type_combo.currentData()
@@ -163,5 +159,6 @@ class TransactionTab(QWidget):
         self.send_clicked.emit(type, self.edc_id, trx)
         
     def set_edc_devices(self, edc_devices: list[str]):
+        self.edc_combo.clear()
         for edc_id in edc_devices:
             self.edc_combo.addItem(edc_id, edc_id)

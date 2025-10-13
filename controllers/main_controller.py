@@ -25,7 +25,12 @@ class MainController:
         # Initialize controllers
         self.pairing = PairingController(self.view.pairing_tab, self.websocket_service)
         self.setting = SettingController(self.view.setting_tab, self.config)
-        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service, self.config.get("general.pos_id"))
+        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service)
+        
+        # POS ID
+        pos_id = self.config.get("general.pos_id")
+        self.pairing.set_pos_id(pos_id)
+        self.transaction.set_pos_id(pos_id)
         
         # Connect signals
         self._connect_ui_events()
@@ -72,7 +77,7 @@ class MainController:
         self._register()
         
         # Get active EDC devices
-        self.transaction.get_active_edc_devices()
+        self.pairing.get_active_edc_devices()
     
     def _on_websocket_send(self, message: str):
         print(f"[INFO] WebSocket send: {message}")
@@ -105,7 +110,16 @@ class MainController:
                     
             elif type == "LIST_EDC":
                 data_list = data.get("data_list", [])
-                self.transaction.on_edc_devices_response(data_list)
+                devices = []
+                
+                for item in data_list:
+                    devices.append(item.get("edc_id"))
+                    
+                self.view.pairing_tab.set_edc_devices(devices)
+                self.view.transaction_tab.set_edc_devices(devices)
+                
+            elif type == "UNPAIR_EDC_DONE":
+                self.pairing.on_device_unpaired(data.get("edc_id"))
 
             elif type == "ERROR":
                 QMessageBox.warning(
@@ -157,7 +171,6 @@ class MainController:
         self.view.show()
 
     async def cleanup(self):
-        pass
         if self.websocket_service:
             await self.websocket_service.close()
 
@@ -174,3 +187,8 @@ class MainController:
             await self.websocket_service.send(data)
         
         asyncio.create_task(register_task())
+        
+    def _get_active_edc_devices(self):
+        async def get_task():
+            if self.client.ws and self.pos_id:
+                data = self.payload.make("GET_LIST_EDC", { "pos_id": self.pos_id })
