@@ -1,6 +1,6 @@
 # Application name
 APP_NAME = POS_Simulator
-ENTRY = main.py
+ENTRY = app.py
 
 # Nuitka options
 NUITKA = python -m nuitka
