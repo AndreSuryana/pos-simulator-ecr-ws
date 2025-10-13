@@ -29,5 +29,7 @@ run: $(OUT_EXE)
 
 clean:
 	rm -rf build $(OUT_DIR) *.build *.dist *.spec *.onefile-build $(APP_NAME).exe $(APP_NAME).bin
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
 
 rebuild: clean all
