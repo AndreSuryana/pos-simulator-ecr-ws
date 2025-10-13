@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QFormLayout, QGroupBox, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel
+    QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel, QMessageBox
 )
 from common import TransactionType
 from models import Transaction
@@ -16,33 +16,44 @@ class TransactionTab(QWidget):
     send_clicked(type, edc_id, trx)
         Emitted when users clicks the "Send Transaction" button.
         Carries transaction type, target EDC ID, and transaction data.
+        
+    refresh_clicked()
+        Emitted when the "Refresh" button clicked to refresh list of EDC ID.
     """
     send_clicked = pyqtSignal(TransactionType, str, Transaction)
+    refresh_clicked = pyqtSignal()
 
     def __init__(self):
         super().__init__()
+        self.edc_id = None
 
         # Feature Type
         feature_group = QGroupBox("Feature")
         feature_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         feature_layout = QFormLayout()
-        
-        # TODO: Add EDC ID dropdown selection
-        # - fetch from Get List EDC Active
-        # - set into this view
-        # - apply dropdown with those values
-        # - add manual "Reload" button to reload
 
+        # Type Combo
         self.type_combo = QComboBox()
         for type in TransactionType:
             self.type_combo.addItem(type.label, type)
         self.type_combo.currentIndexChanged.connect(self._on_feature_change)
 
-        self.edc_input = QLineEdit()
-        self.edc_input.setPlaceholderText("Enter EDC ID")
+        # EDC ID Combo + Refresh button
+        self.edc_combo = QComboBox()
+        self.edc_combo.currentIndexChanged.connect(self._on_edc_change)
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.refresh_btn.clicked.connect(self.refresh_clicked.emit)
+        
+        edc_row = QWidget()
+        edc_layout = QHBoxLayout(edc_row)
+        edc_layout.setContentsMargins(0, 0, 0, 0)
+        edc_layout.setSpacing(6)
+        edc_layout.addWidget(self.edc_combo)
+        edc_layout.addWidget(self.refresh_btn)
         
         feature_layout.addRow("Type:", self.type_combo)
-        feature_layout.addRow("EDC ID:", self.edc_input)
+        feature_layout.addRow("EDC ID:", edc_row)
 
         feature_group.setLayout(feature_layout)
 
@@ -110,10 +121,12 @@ class TransactionTab(QWidget):
             # No input needed
             pass
 
-        elif type.type.startswith("qris"):
+        elif type.id.startswith("qris"):
             # Amount
             self._set_buttons(amount=True, transaction_id=True)
-            pass
+        
+    def _on_edc_change(self, index: int):
+        self.edc_id = self.edc_combo.currentData()
         
     def _set_buttons(self, amount = False, tip_amount = False, trace = False, transaction_id = False):
         self.amount_input.setEnabled(amount)
@@ -122,8 +135,15 @@ class TransactionTab(QWidget):
         self.transaction_id_input.setEnabled(transaction_id)
 
     def _on_send_clicked(self):
+        if not self.edc_id:
+            QMessageBox.warning(
+                self,
+                "Missing Information",
+                "Please select EDC ID first."
+            )
+            return
+        
         type: TransactionType = self.type_combo.currentData()
-        edc_id = self.edc_input.text().strip()
 
         # Initialize with empty values
         trx = Transaction()
@@ -140,4 +160,8 @@ class TransactionTab(QWidget):
         if self.trace_input.isEnabled():
             trx.trace = self.trace_input.text().strip()
 
-        self.send_clicked.emit(type, edc_id, trx)
+        self.send_clicked.emit(type, self.edc_id, trx)
+        
+    def set_edc_devices(self, edc_devices: list[str]):
+        for edc_id in edc_devices:
+            self.edc_combo.addItem(edc_id, edc_id)

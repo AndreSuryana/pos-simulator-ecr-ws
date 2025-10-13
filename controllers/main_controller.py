@@ -25,7 +25,7 @@ class MainController:
         # Initialize controllers
         self.pairing = PairingController(self.view.pairing_tab, self.websocket_service)
         self.setting = SettingController(self.view.setting_tab, self.config)
-        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service)
+        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service, self.config.get("general.pos_id"))
         
         # Connect signals
         self._connect_ui_events()
@@ -70,6 +70,9 @@ class MainController:
         print("[INFO] WebSocket opened")
         self.view.logs_tab.add_info("WebSocket opened")
         self._register()
+        
+        # Get active EDC devices
+        self.transaction.get_active_edc_devices()
     
     def _on_websocket_send(self, message: str):
         print(f"[INFO] WebSocket send: {message}")
@@ -97,11 +100,13 @@ class MainController:
                 edc_id = data.get("edc_id")
                 trx_data = data.get("data_transaction", {})
                 
-                print(f"[DEBUG] EDC ID {edc_id}, RESPONSE: {trx_data}")
-                
                 if edc_id and trx_data:
                     self.transaction.on_transaction_response(edc_id, trx_data)
                     
+            elif type == "LIST_EDC":
+                data_list = data.get("data_list", [])
+                self.transaction.on_edc_devices_response(data_list)
+
             elif type == "ERROR":
                 QMessageBox.warning(
                     self.view,
