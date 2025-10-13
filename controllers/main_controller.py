@@ -3,6 +3,7 @@ import json
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from .pairing_controller import PairingController
 from .setting_controller import SettingController
+from .transaction_controller import TransactionController
 from services import WebSocketService
 from utils.config import ConfigManager
 from utils.payload import SignedPayload
@@ -24,6 +25,7 @@ class MainController:
         # Initialize controllers
         self.pairing = PairingController(self.view.pairing_tab, self.websocket_service)
         self.setting = SettingController(self.view.setting_tab, self.config)
+        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service)
         
         # Connect signals
         self._connect_ui_events()
@@ -80,16 +82,32 @@ class MainController:
         try:
             parsed = json.loads(message)
             type = parsed.get("type")
+            data = parsed.get("data", {})
             
             if type == "REGISTER_POS_DONE":
                 self.view.bottom_bar.set_status_label("Ready", "green")
                 
             elif type == "PAIR_POS_DONE":
-                data = parsed.get("data", {})
                 edc_id = data.get("edc_id")
 
                 if edc_id:
                     self.pairing.on_device_paired(edc_id)
+                    
+            elif type == "SEND_TO_POS":
+                edc_id = data.get("edc_id")
+                trx_data = data.get("data_transaction", {})
+                
+                print(f"[DEBUG] EDC ID {edc_id}, RESPONSE: {trx_data}")
+                
+                if edc_id and trx_data:
+                    self.transaction.on_transaction_response(edc_id, trx_data)
+                    
+            elif type == "ERROR":
+                QMessageBox.warning(
+                    self.view,
+                    "Error",
+                    f"{data.get("reason_code")} - {data.get("reason")}"
+                )
                 
         except json.JSONDecodeError as e:
             print(f"[ERROR] Invalid JSON received {e}")
@@ -125,6 +143,7 @@ class MainController:
             
             # Update payload in other controllers
             self.pairing.set_payload(self.payload)
+            self.transaction.set_payload(self.payload)
         except ValueError:
             print("[INFO] Invalid private key format, opening Settings tab...")
             self.view.show_settings_tab()
