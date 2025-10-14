@@ -51,7 +51,7 @@ class WebSocketService:
         try:
             async for message in self.ws:
                 if self.on_message:
-                    self.on_message(message)
+                    self.on_message(message.strip())
         except asyncio.CancelledError:
             pass
         except Exception as e:

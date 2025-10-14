@@ -106,22 +106,18 @@ class TransactionTab(QWidget):
         self._set_buttons()
 
         if type == TransactionType.SALE_REGULAR:
-            # Amount, Tip Amount, Transaction ID (optional)
+            # Amount, Tip Amount (optional), Transaction ID (optional), Card PAN (not yet added)
             self._set_buttons(amount=True, tip_amount=True, transaction_id=True)
 
         elif type == TransactionType.VOID_REGULAR:
-            # Trace
-            self._set_buttons(trace=True)
+            # Trace, Transaction ID
+            self._set_buttons(trace=True, transaction_id=True)
 
-        elif type == TransactionType.LAST_ECR_TRX or type == TransactionType.ANY_ECR_TRX:
+        elif type == TransactionType.LAST_ECR_TRX:
             # Transaction ID
             self._set_buttons(transaction_id=True)
 
-        elif type == TransactionType.SETTLEMENT: 
-            # No input needed
-            pass
-
-        elif type.id.startswith("qris"):
+        elif type.id.startswith("qr"):
             # Amount
             self._set_buttons(amount=True, transaction_id=True)
         
