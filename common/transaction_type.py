@@ -11,6 +11,7 @@ class TransactionType(Enum):
     # Common
     SETTLEMENT          = ("settlement", "Settlement")
     LAST_ECR_TRX        = ("getLastEcrTransaction", "Get Last ECR Transaction")
+    ANY_ECR_TRX         = ("getAnyEcrTransaction", "Get Any ECR Transaction")
     CHECK_CONNECTION    = ("checkConnection", "Check Connection")
     CHECK_VERSION       = ("checkVersion", "Check Version")
     

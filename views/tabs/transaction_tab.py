@@ -113,7 +113,7 @@ class TransactionTab(QWidget):
             # Trace, Transaction ID
             self._set_buttons(trace=True, transaction_id=True)
 
-        elif type == TransactionType.LAST_ECR_TRX:
+        elif type == TransactionType.LAST_ECR_TRX or type == TransactionType.ANY_ECR_TRX:
             # Transaction ID
             self._set_buttons(transaction_id=True)
 
