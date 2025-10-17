@@ -44,8 +44,10 @@ class MainController:
         self.view.bottom_bar.disconnect_clicked.connect(self._disconnect_websocket)
     
     def _connect_websocket(self, url: str):
-        self.config.set("ws.url", url)  # Save url to config file
         self.view.bottom_bar.set_status_label("Connecting...", "orange")
+
+        # Save url to config file
+        self.config.set("ws.url", url)
         
         async def connect_task():
             await self.websocket_service.connect(
