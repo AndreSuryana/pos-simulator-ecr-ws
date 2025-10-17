@@ -7,6 +7,8 @@ import random
 class Transaction:
     amount: str | None = None
     tip_amount: str | None = None
+    tenor: str | None = None
+    plan: str | None = None
     trace: str | None = None
     id: str | None = None
     is_generate_id: bool = False

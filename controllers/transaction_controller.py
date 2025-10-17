@@ -38,6 +38,12 @@ class TransactionController(DeviceController):
             if trx.tip_amount:
                 data_field["tipAmount"] = trx.tip_amount
                 
+            if trx.tenor:
+                data_field["tenor"] = trx.tenor
+            
+            if trx.plan:
+                data_field["plan"] = trx.plan
+                
             id_len = int(self.config.get("general.trx_id_len"))
             trx_id = trx.get_transaction_id(id_len)
             if trx_id:

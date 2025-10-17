@@ -97,8 +97,30 @@ class TransactionTab(QWidget):
         amount_tip_layout.addSpacing(20)
         amount_tip_layout.addWidget(QLabel("Tip:"))
         amount_tip_layout.addWidget(self.tip_amount_input)
+        
+        # Tenor + Plan row (for Installment)
+        self.tenor_combo = QComboBox()
+        for val in ["3", "6", "9", "12", "18", "24"]:
+            self.tenor_combo.addItem(f"{val} Months", val)
+
+        self.plan_combo = QComboBox()
+        for val in ["None", "1", "2", "3"]:
+            label = "None" if val == "None" else f"Plan {val}"
+            self.plan_combo.addItem(label, val)
+            
+        installment_row = QWidget()
+        installment_layout = QHBoxLayout(installment_row)
+        installment_layout.setContentsMargins(0, 0, 0, 0)
+        installment_layout.setSpacing(10)  # same as amount_tip_row for consistency
+
+        installment_layout.addWidget(QLabel("Tenor:"))
+        installment_layout.addWidget(self.tenor_combo)
+        installment_layout.addSpacing(20)
+        installment_layout.addWidget(QLabel("Plan:"))
+        installment_layout.addWidget(self.plan_combo)
 
         trx_layout.addRow(amount_tip_row)
+        trx_layout.addRow(installment_row)
         trx_layout.addRow("Trace:", self.trace_input)
         trx_layout.addRow("Transaction ID:", trx_id_row)
 
@@ -150,23 +172,22 @@ class TransactionTab(QWidget):
             return
 
         # Disable all input first and enable based on the selected type
-        self._set_buttons()
+        self._set_inputs()
 
         if type == CommonTransactionType.SALE_REGULAR:
-            # Amount, Tip Amount (optional), Transaction ID (optional)
-            self._set_buttons(amount=True, tip_amount=True, transaction_id=True)
+            self._set_inputs(amount=True, tip_amount=True, transaction_id=True)
+            
+        elif type == CommonTransactionType.SALE_INSTALLMENT:
+            self._set_inputs(amount=True, tenor=True, plan=True, transaction_id=True)
 
         elif type == CommonTransactionType.VOID_REGULAR:
-            # Trace, Transaction ID
-            self._set_buttons(trace=True, transaction_id=True)
+            self._set_inputs(trace=True, transaction_id=True)
 
         elif type in (CommonTransactionType.LAST_ECR_TRX, CommonTransactionType.ANY_ECR_TRX):
-            # Transaction ID only
-            self._set_buttons(transaction_id=True)
+            self._set_inputs(transaction_id=True)
 
         elif hasattr(type, "id") and type.id.startswith("qr"):
-            # QR-based transactions
-            self._set_buttons(amount=True, transaction_id=True)
+            self._set_inputs(amount=True, transaction_id=True)
         
     def _on_edc_change(self, index: int):
         self.edc_id = self.edc_combo.currentData()
@@ -178,12 +199,14 @@ class TransactionTab(QWidget):
         if is_checked:
             self.transaction_id_input.clear()
         
-    def _set_buttons(self, amount = False, tip_amount = False, trace = False, transaction_id = False):
+    def _set_inputs(self, amount = False, tip_amount = False, trace = False, transaction_id = False, tenor = False, plan = False):
         self.amount_input.setEnabled(amount)
         self.tip_amount_input.setEnabled(tip_amount)
         self.trace_input.setEnabled(trace)
         self.transaction_id_input.setEnabled(transaction_id)
         self.generate_id_checkbox.setEnabled(transaction_id)
+        self.tenor_combo.setEnabled(tenor)
+        self.plan_combo.setEnabled(plan)
 
     def _on_send_clicked(self):
         if not self.edc_id:
@@ -198,6 +221,13 @@ class TransactionTab(QWidget):
             
         if self.tip_amount_input.isEnabled():
             trx.tip_amount = self.tip_amount_input.text().strip()
+            
+        if self.tenor_combo.isEnabled():
+            trx.tenor = self.tenor_combo.currentData()
+
+        if self.plan_combo.isEnabled():
+            plan_val = self.plan_combo.currentData()
+            trx.plan = None if plan_val == "None" else plan_val
             
         if self.trace_input.isEnabled():
             trx.trace = self.trace_input.text().strip()
