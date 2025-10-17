@@ -4,15 +4,17 @@ from common import TransactionType
 from models import Transaction
 from PyQt5.QtWidgets import QMessageBox
 from services import WebSocketService
+from utils.config import ConfigManager
 from utils.payload import SignedPayload
 from views.tabs import TransactionTab
 
 
 class TransactionController(DeviceController):
-    def __init__(self, view: TransactionTab, client: WebSocketService, payload: SignedPayload | None = None):
+    def __init__(self, view: TransactionTab, client: WebSocketService, config: ConfigManager):
         self.view = view
         self.client = client
-        self.payload = payload
+        self.config = config
+        self.payload: SignedPayload | None = None
         
         # Connect signals
         self.view.send_clicked.connect(self._send_transaction)
@@ -36,7 +38,8 @@ class TransactionController(DeviceController):
             if trx.tip_amount:
                 data_field["tipAmount"] = trx.tip_amount
                 
-            trx_id = trx.get_transaction_id()
+            id_len = int(self.config.get("general.trx_id_len"))
+            trx_id = trx.get_transaction_id(id_len)
             if trx_id:
                 data_field["transactionId"] = trx_id
                 

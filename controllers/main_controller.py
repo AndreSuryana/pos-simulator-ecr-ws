@@ -25,7 +25,7 @@ class MainController:
         # Initialize controllers
         self.pairing = PairingController(self.view.pairing_tab, self.websocket_service)
         self.setting = SettingController(self.view.setting_tab, self.config)
-        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service)
+        self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service, self.config)
         
         # POS ID
         pos_id = self.config.get("general.pos_id")
