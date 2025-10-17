@@ -30,6 +30,9 @@ class SettingController:
         if not general.get("mid"):
             self._on_error("MID is required.")
             return
+        if not general.get("trx_id_len"):
+            self._on_error("Transaction ID Length required.")
+            return
         
         # Validate auth section
         if not auth.get("api_key"):

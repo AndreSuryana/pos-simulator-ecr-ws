@@ -4,10 +4,13 @@ from pathlib import Path
 from threading import RLock
 
 
+CONFIG_FILE = "pos-simulator-websocket.json"
+
+
 class ConfigManager:
     """Thread-safe JSON configuration manager."""
 
-    def __init__(self, filename: str = "config.json"):
+    def __init__(self, filename: str = CONFIG_FILE):
         self._lock = RLock()
         self._path = Path(self._get_app_dir()) / filename
         self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -85,7 +88,8 @@ class ConfigManager:
         return {
             "general": {
                 "pos_id": "POS-SIMULATOR",
-                "mid": "MID000000000017"
+                "mid": "MID000000000017",
+                "trx_id_len": 14
             },
             "auth": {
                 "api_key": "",

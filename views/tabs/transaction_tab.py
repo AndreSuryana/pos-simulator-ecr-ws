@@ -1,7 +1,8 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QFormLayout, QGroupBox, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel, QMessageBox
+    QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel, 
+    QMessageBox, QCheckBox
 )
 from common import TransactionType
 from models import Transaction
@@ -64,8 +65,22 @@ class TransactionTab(QWidget):
         self.amount_input = QLineEdit("0")
         self.tip_amount_input = QLineEdit("0")
         self.trace_input = QLineEdit()
+        
+        # Transaction ID Row
         self.transaction_id_input = QLineEdit()
+        self.transaction_id_input.setPlaceholderText("Enter or auto-generate")
+        
+        self.generate_id_checkbox = QCheckBox("Auto-generate")
+        self.generate_id_checkbox.stateChanged.connect(self._on_generate_id_changed)
+        
+        trx_id_row = QWidget()
+        trx_id_layout = QHBoxLayout(trx_id_row)
+        trx_id_layout.setContentsMargins(0, 0, 0, 0)
+        trx_id_layout.setSpacing(8)
+        trx_id_layout.addWidget(self.transaction_id_input)
+        trx_id_layout.addWidget(self.generate_id_checkbox)
 
+        # Amount/Tip Row
         amount_tip_row = QWidget()
         amount_tip_layout = QHBoxLayout(amount_tip_row)
         amount_tip_layout.setContentsMargins(0, 0, 0, 0)
@@ -79,7 +94,7 @@ class TransactionTab(QWidget):
 
         trx_layout.addRow(amount_tip_row)
         trx_layout.addRow("Trace:", self.trace_input)
-        trx_layout.addRow("Transaction ID:", self.transaction_id_input)
+        trx_layout.addRow("Transaction ID:", trx_id_row)
 
         trx_group.setLayout(trx_layout)
 
@@ -124,11 +139,19 @@ class TransactionTab(QWidget):
     def _on_edc_change(self, index: int):
         self.edc_id = self.edc_combo.currentData()
         
+    def _on_generate_id_changed(self, state: int):
+        """Enable/disable manual Transaction ID input based on checkbox."""
+        is_checked = self.generate_id_checkbox.isChecked()
+        self.transaction_id_input.setEnabled(not is_checked)
+        if is_checked:
+            self.transaction_id_input.clear()
+        
     def _set_buttons(self, amount = False, tip_amount = False, trace = False, transaction_id = False):
         self.amount_input.setEnabled(amount)
         self.tip_amount_input.setEnabled(tip_amount)
         self.trace_input.setEnabled(trace)
         self.transaction_id_input.setEnabled(transaction_id)
+        self.generate_id_checkbox.setEnabled(transaction_id)
 
     def _on_send_clicked(self):
         if not self.edc_id:
@@ -136,8 +159,6 @@ class TransactionTab(QWidget):
             return
         
         type: TransactionType = self.type_combo.currentData()
-
-        # Initialize with empty values
         trx = Transaction()
         
         if self.amount_input.isEnabled():
@@ -146,11 +167,13 @@ class TransactionTab(QWidget):
         if self.tip_amount_input.isEnabled():
             trx.tip_amount = self.tip_amount_input.text().strip()
             
-        if self.transaction_id_input.isEnabled():
-            trx.transaction_id = self.transaction_id_input.text().strip()
-            
         if self.trace_input.isEnabled():
             trx.trace = self.trace_input.text().strip()
+
+        if self.generate_id_checkbox.isChecked():
+            trx.is_generate_id = True
+        elif self.transaction_id_input.isEnabled():
+            trx.id = self.transaction_id_input.text().strip()
 
         self.send_clicked.emit(type, self.edc_id, trx)
         

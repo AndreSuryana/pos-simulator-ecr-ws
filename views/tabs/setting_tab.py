@@ -1,4 +1,5 @@
 from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import (
     QWidget, QFormLayout, QVBoxLayout, QHBoxLayout, QLineEdit,
     QTextEdit, QGroupBox, QPushButton, QComboBox, QFileDialog
@@ -34,8 +35,11 @@ class SettingTab(QWidget):
 
         self.pos_id_input = QLineEdit()
         self.mid_input = QLineEdit()
+        self.trx_id_len_input = QLineEdit()
+        self.trx_id_len_input.setValidator(QIntValidator())
         general_layout.addRow("POS ID:", self.pos_id_input)
         general_layout.addRow("MID:", self.mid_input)
+        general_layout.addRow("Transaction ID Length:", self.trx_id_len_input)
 
         general_group.setLayout(general_layout)
         main_layout.addWidget(general_group)
@@ -137,6 +141,7 @@ class SettingTab(QWidget):
             "general": {
                 "pos_id": self.pos_id_input.text().strip(),
                 "mid": self.mid_input.text().strip(),
+                "trx_id_len": self.trx_id_len_input.text().strip(),
             },
             "auth": {
                 "api_key": self.api_key_input.text().strip(),
@@ -157,10 +162,16 @@ class SettingTab(QWidget):
         auth = config.get("auth", {})
         ws = config.get("ws", {})
 
+        # General
         self.pos_id_input.setText(general.get("pos_id", ""))
         self.mid_input.setText(general.get("mid", ""))
+        self.trx_id_len_input.setText(str(general.get("trx_id_len", "")))
+        
+        # Auth
         self.api_key_input.setText(auth.get("api_key", ""))
         self.private_key_input.setText(auth.get("private_key", ""))
+
+        # WebSocket
         self.tls_mode_combo.setCurrentText(ws.get("tls", _TLS_NONE))
         self.ca_cert_input.setText(ws.get("ca_cert", ""))
         self.client_cert_input.setText(ws.get("client_cert", ""))

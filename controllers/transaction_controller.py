@@ -37,8 +37,9 @@ class TransactionController(DeviceController):
             if trx.tip_amount:
                 data_field["tipAmount"] = trx.tip_amount
                 
-            if trx.transaction_id:
-                data_field["transactionId"] = trx.transaction_id
+            trx_id = trx.get_transaction_id()
+            if trx_id:
+                data_field["transactionId"] = trx_id
                 
             if trx.trace:
                 data_field["traceNumber"] = trx.trace
@@ -55,8 +56,6 @@ class TransactionController(DeviceController):
         asyncio.create_task(trx_task())
         
     def on_transaction_response(self, edc_id: str, resp: dict):
-        # TODO: Show in the transaction logs (not yet created)
-
         response_code = resp.get("responseCode")
         response_message = resp.get("responseMessage")
         data_field = resp.get("dataField")
