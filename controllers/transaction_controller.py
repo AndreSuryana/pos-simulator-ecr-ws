@@ -4,7 +4,6 @@ from common import TransactionType
 from models import Transaction
 from PyQt5.QtWidgets import QMessageBox
 from services import WebSocketService
-from utils.config import ConfigManager
 from utils.payload import SignedPayload
 from views.tabs import TransactionTab
 

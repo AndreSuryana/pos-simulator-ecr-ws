@@ -19,8 +19,6 @@ class Transaction:
         - Else if `id` is provided → use the provided ID (padded or trimmed).
         - Else → None
         """
-        print(f"[DEBUG] is_generate_id={self.is_generate_id}, id={self.id}")
-        
         if self.is_generate_id:
             # Example format: YYMMDDhhmmss + random digits to fit id_len
             base = datetime.now().strftime("%y%m%d%H%M%S")
