@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import (
     QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel, 
     QMessageBox, QCheckBox
 )
-from common import TransactionType
+from ecr.mode import EcrMode
+from ecr.type import *
 from models import Transaction
 
 
@@ -33,10 +34,14 @@ class TransactionTab(QWidget):
         feature_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         feature_layout = QFormLayout()
 
+        # Mode
+        self.mode_combo = QComboBox()
+        for mode in EcrMode:
+            self.mode_combo.addItem(mode.name, mode)
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_change)
+
         # Type Combo
         self.type_combo = QComboBox()
-        for type in TransactionType:
-            self.type_combo.addItem(type.label, type)
         self.type_combo.currentIndexChanged.connect(self._on_feature_change)
 
         # EDC ID Combo + Refresh button
@@ -53,6 +58,7 @@ class TransactionTab(QWidget):
         edc_layout.addWidget(self.edc_combo)
         edc_layout.addWidget(self.refresh_btn)
         
+        feature_layout.addRow("Mode:", self.mode_combo)
         feature_layout.addRow("Type:", self.type_combo)
         feature_layout.addRow("EDC ID:", edc_row)
 
@@ -111,29 +117,55 @@ class TransactionTab(QWidget):
         self.setLayout(main_layout)
 
         # Initialize default state
-        self._on_feature_change(0)
+        self._on_mode_change(0)
+        
+    def _on_mode_change(self, index: int):
+        """
+        Fill the transaction type combo box based on the selected ECR mode.
+        """
+        self.type_combo.clear()
+        mode: EcrMode = self.mode_combo.currentData()
+
+        # Map ECR mode to transaction type enum
+        mode_type_map = {
+            EcrMode.BRI: BriTransactionType,
+            EcrMode.PVS: PvsTransactionType,
+        }
+
+        transaction_enum = mode_type_map.get(mode)
+        if not transaction_enum:
+            return
+
+        # Use the .all() method to include common + specific transaction types
+        for trx_type in transaction_enum.all():
+            self.type_combo.addItem(trx_type.label, trx_type)
+        
 
     def _on_feature_change(self, index: int):
         """Enable/disable transaction data fields depending on selected feature type."""
         type: TransactionType = self.type_combo.currentData()
-        
-        # Disable all input first and enabled based on the selected type
+
+        # Guard clause: skip if no valid type is selected
+        if type is None:
+            return
+
+        # Disable all input first and enable based on the selected type
         self._set_buttons()
 
-        if type == TransactionType.SALE_REGULAR:
-            # Amount, Tip Amount (optional), Transaction ID (optional), Card PAN (not yet added)
+        if type == CommonTransactionType.SALE_REGULAR:
+            # Amount, Tip Amount (optional), Transaction ID (optional)
             self._set_buttons(amount=True, tip_amount=True, transaction_id=True)
 
-        elif type == TransactionType.VOID_REGULAR:
+        elif type == CommonTransactionType.VOID_REGULAR:
             # Trace, Transaction ID
             self._set_buttons(trace=True, transaction_id=True)
 
-        elif type == TransactionType.LAST_ECR_TRX or type == TransactionType.ANY_ECR_TRX:
-            # Transaction ID
+        elif type in (CommonTransactionType.LAST_ECR_TRX, CommonTransactionType.ANY_ECR_TRX):
+            # Transaction ID only
             self._set_buttons(transaction_id=True)
 
-        elif type.id.startswith("qr"):
-            # Amount
+        elif hasattr(type, "id") and type.id.startswith("qr"):
+            # QR-based transactions
             self._set_buttons(amount=True, transaction_id=True)
         
     def _on_edc_change(self, index: int):

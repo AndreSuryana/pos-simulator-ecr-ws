@@ -1,6 +1,6 @@
 import asyncio
 from .device_controller import DeviceController
-from common import TransactionType
+from ecr.type import TransactionType
 from models import Transaction
 from PyQt5.QtWidgets import QMessageBox
 from services import WebSocketService
