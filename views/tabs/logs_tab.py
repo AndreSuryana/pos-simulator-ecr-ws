@@ -36,7 +36,7 @@ class LogsTab(QWidget):
 
         # Add "Clear" action
         clear_action = QAction("Clear", self)
-        clear_action.triggered.connect(self.clear_log)
+        clear_action.triggered.connect(self._clear_log)
         menu.addAction(clear_action)
 
         menu.exec_(self.log_view.mapToGlobal(pos))
@@ -88,5 +88,5 @@ class LogsTab(QWidget):
     def add_error(self, message: str):
         self.add_log(LogType.ERROR, message)
 
-    def clear_log(self):
-        self.log_view.clear
+    def _clear_log(self):
+        self.log_view.clear()
