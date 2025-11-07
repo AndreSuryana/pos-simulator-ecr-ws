@@ -1,3 +1,3 @@
 APP_NAME = "POS Simulator"
-APP_VERSION = "v1.2.0"
+APP_VERSION = "v1.2.1"
 APP_TITLE = f"{APP_NAME} {APP_VERSION}"
