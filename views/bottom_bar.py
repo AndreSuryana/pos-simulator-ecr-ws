@@ -65,3 +65,9 @@ class BottomBar(QWidget):
     def set_status_label(self, text: str, color: str = "black"):
         self.status_label.setText(f"Status: {text}")
         self.status_label.setStyleSheet(f"color: {color}; font-weight: bold")
+        
+    def set_btn_connect(self):
+        self.connect_btn.setText(_BTN_CONNECT)
+    
+    def set_btn_disconnect(self):
+        self.connect_btn.setText(_BTN_DISCONNECT)

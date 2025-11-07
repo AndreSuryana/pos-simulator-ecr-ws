@@ -1,9 +1,21 @@
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
 from utils.config import ConfigManager
 from views.tabs import SettingTab
 
-class SettingController:
+class SettingController(QObject):
+    """
+    Setting controller.
+    
+    Signals
+    -------
+    config_updated()
+        Emitted when there's configuration updates.
+    """
+    config_updated = pyqtSignal()
+    
     def __init__(self, view: SettingTab, config: ConfigManager):
+        super().__init__()
         self.view = view
         self.config = config
         
@@ -60,6 +72,9 @@ class SettingController:
         # If all good, save config
         self.config.update(config)
         QMessageBox.information(self.view, "Configuration Saved", "Settings have been saved successfully.")
+        
+        # Notify all
+        self.config_updated.emit()
             
     def _on_error(self, text: str):
         QMessageBox.warning(self.view, "Configuration Error", text)

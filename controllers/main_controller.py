@@ -27,10 +27,11 @@ class MainController:
         self.setting = SettingController(self.view.setting_tab, self.config)
         self.transaction = TransactionController(self.view.transaction_tab, self.websocket_service, self.config)
         
-        # POS ID
-        pos_id = self.config.get("general.pos_id")
-        self.pairing.set_pos_id(pos_id)
-        self.transaction.set_pos_id(pos_id)
+        # POS info
+        self._fill_pos_info()
+        
+        # Re-initialize if configuration changed
+        self.setting.config_updated.connect(self._on_configuration_updated)
         
         # Connect signals
         self._connect_ui_events()
@@ -38,6 +39,11 @@ class MainController:
         
         # Ensure configurations
         self._check_config()
+        
+    def _fill_pos_info(self):
+        pos_id = self.config.get("general.pos_id")
+        self.pairing.set_pos_id(pos_id)
+        self.transaction.set_pos_id(pos_id)
         
     def _connect_ui_events(self):
         self.view.bottom_bar.connect_clicked.connect(self._connect_websocket)
@@ -124,10 +130,12 @@ class MainController:
                 self.pairing.on_device_unpaired(data.get("edc_id"))
 
             elif type == "ERROR":
+                error_msg = f"{data.get("reason_code")} - {data.get("reason")}"
+                self.view.bottom_bar.set_status_label(error_msg, "red")
                 QMessageBox.warning(
                     self.view,
                     "Error",
-                    f"{data.get("reason_code")} - {data.get("reason")}"
+                    error_msg
                 )
                 
         except json.JSONDecodeError as e:
@@ -137,11 +145,13 @@ class MainController:
         print("[INFO] WebSocket closed")
         self.view.logs_tab.add_error("WebSocket closed")
         self.view.bottom_bar.set_status_label("Disconnected", "red")
+        self.view.bottom_bar.set_btn_connect()
     
     def _on_websocket_error(self, e: Exception):
         print(f"[ERROR] WebSocket error: {e}")
         self.view.logs_tab.add_error(f"WebSocket error: {e}")
         self.view.bottom_bar.set_status_label("Disconnected", "red")
+        self.view.bottom_bar.set_btn_connect()
     
     def _check_config(self):
         # WebSocket URL for bottom bar
@@ -168,6 +178,19 @@ class MainController:
         except ValueError:
             print("[INFO] Invalid private key format, opening Settings tab...")
             self.view.show_settings_tab()
+            
+    def _on_configuration_updated(self):
+        print("[INFO] Configuration updated, refreshing some data...")
+        
+        # Refresh POS info
+        self._fill_pos_info()
+        
+        # Disconnect WebSocket
+        if self.websocket_service:
+            asyncio.create_task(self.websocket_service.close())
+        
+        # Perform configuration check again, which refresh the SignedPayload
+        self._check_config()
     
     def show_app(self):
         self.view.show()
