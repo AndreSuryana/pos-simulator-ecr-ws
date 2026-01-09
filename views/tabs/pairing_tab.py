@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import (
     QWidget, QFormLayout, QVBoxLayout, QLineEdit, QPushButton,
-    QGroupBox, QComboBox, QSizePolicy, QHBoxLayout
+    QGroupBox, QComboBox, QSizePolicy, QHBoxLayout, QSplitter
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
+from common.logging import LogType
+from views.log_view import LogView
 
 
 class PairingTab(QWidget):
@@ -30,11 +32,28 @@ class PairingTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        layout = QVBoxLayout()
-        layout.addWidget(self._build_pairing_group())
-        layout.addWidget(self._build_unpairing_group())
-        layout.addStretch()
-        self.setLayout(layout)
+        # LEFT: pairing and unpairing
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.addWidget(self._build_pairing_group())
+        left_layout.addWidget(self._build_unpairing_group())
+        left_layout.addStretch()
+
+        # RIGHT: logs
+        self.log_view = LogView()
+        self.log_view.setMinimumWidth(300)
+
+        # SPLITTER
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(left_widget)
+        splitter.addWidget(self.log_view)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+
+        # ROOT LAYOUT
+        root_layout = QHBoxLayout()
+        root_layout.addWidget(splitter)
+        self.setLayout(root_layout)
         
     def _build_pairing_group(self):
         group = QGroupBox("Pairing")
@@ -99,3 +118,6 @@ class PairingTab(QWidget):
         self.edc_combo.clear()
         for edc_id in edc_devices:
             self.edc_combo.addItem(edc_id, edc_id)
+            
+    def add_log(self, log_type: LogType, message: str):
+        self.log_view.add_log(log_type, message)

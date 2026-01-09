@@ -1,6 +1,6 @@
-from .logs_tab import LogsTab, LogType
+from .logs_tab import LogsTab
 from .pairing_tab import PairingTab
 from .setting_tab import SettingTab
 from .transaction_tab import TransactionTab
 
-__all__ = ["LogsTab", "LogType", "PairingTab", "SettingTab", "TransactionTab"]
+__all__ = ["LogsTab", "PairingTab", "SettingTab", "TransactionTab"]

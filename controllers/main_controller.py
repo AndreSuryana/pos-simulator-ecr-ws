@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from .pairing_controller import PairingController
 from .setting_controller import SettingController
 from .transaction_controller import TransactionController
+from common.logging import LogType
 from services import WebSocketService
+from services import LogBus
 from utils.config import ConfigManager
 from utils.payload import SignedPayload
 from views import MainWindow
-from views.tabs import LogType
-
 
 class MainController:
 
@@ -39,6 +39,12 @@ class MainController:
         
         # Ensure configurations
         self._check_config()
+        
+        # Configure logging bus
+        self.log_bus = LogBus()
+        self.log_bus.log_emitted.connect(self.view.logs_tab.add_log)
+        self.log_bus.log_emitted.connect(self.pairing.view.add_log)
+        self.log_bus.log_emitted.connect(self.transaction.view.add_log)
         
     def _fill_pos_info(self):
         pos_id = self.config.get("general.pos_id")
@@ -81,7 +87,7 @@ class MainController:
         
     def _on_websocket_open(self):
         print("[INFO] WebSocket opened")
-        self.view.logs_tab.add_info("WebSocket opened")
+        self.log_bus.emit(LogType.INFO, "WebSocket opened")
         self._register()
         
         # Get active EDC devices
@@ -89,11 +95,11 @@ class MainController:
     
     def _on_websocket_send(self, message: str):
         print(f"[INFO] WebSocket send: {message}")
-        self.view.logs_tab.add_log(LogType.OUTGOING, message)
+        self.log_bus.emit(LogType.SENT, message)
     
     def _on_websocket_message(self, message: str):
         print(f"[INFO] WebSocket received: {message}")
-        self.view.logs_tab.add_log(LogType.INCOMING, message)
+        self.log_bus.emit(LogType.RECEIVED, message)
         
         try:
             parsed = json.loads(message)
@@ -143,13 +149,13 @@ class MainController:
     
     def _on_websocket_close(self):
         print("[INFO] WebSocket closed")
-        self.view.logs_tab.add_error("WebSocket closed")
+        self.log_bus.emit(LogType.ERROR, "WebSocket closed")
         self.view.bottom_bar.set_status_label("Disconnected", "red")
         self.view.bottom_bar.set_btn_connect()
     
     def _on_websocket_error(self, e: Exception):
         print(f"[ERROR] WebSocket error: {e}")
-        self.view.logs_tab.add_error(f"WebSocket error: {e}")
+        self.log_bus.emit(LogType.ERROR, f"WebSocket error: {e}")
         self.view.bottom_bar.set_status_label("Disconnected", "red")
         self.view.bottom_bar.set_btn_connect()
     

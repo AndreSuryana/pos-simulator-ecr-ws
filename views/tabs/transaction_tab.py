@@ -2,11 +2,14 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QFormLayout, QGroupBox, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel, 
-    QMessageBox, QCheckBox
+    QMessageBox, QCheckBox, QSplitter
 )
+from PyQt5.QtCore import Qt
+from common.logging import LogType
 from ecr.mode import EcrMode
 from ecr.type import *
 from models import Transaction
+from views.log_view import LogView
 
 
 class TransactionTab(QWidget):
@@ -24,15 +27,43 @@ class TransactionTab(QWidget):
     """
     send_clicked = pyqtSignal(TransactionType, str, Transaction)
     refresh_clicked = pyqtSignal()
-
+    
     def __init__(self):
         super().__init__()
         self.edc_id = None
+        
+        # LEFT: existing transaction UI
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.addWidget(self._build_feature_group())
+        left_layout.addWidget(self._build_trx_group())
+        left_layout.addLayout(self._build_btn_layout())
+        left_layout.addStretch()
 
-        # Feature Type
-        feature_group = QGroupBox("Feature")
-        feature_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        feature_layout = QFormLayout()
+        # RIGHT: logs
+        self.log_view = LogView()
+        self.log_view.setMinimumWidth(350)
+
+        # SPLITTER
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(left_widget)
+        splitter.addWidget(self.log_view)
+        splitter.setStretchFactor(0, 2)
+        splitter.setStretchFactor(1, 1)
+
+        # ROOT
+        root_layout = QHBoxLayout()
+        root_layout.addWidget(splitter)
+        self.setLayout(root_layout)
+        
+        # Initialize default state
+        self._on_mode_change(0)
+        
+    def _build_feature_group(self):
+        group = QGroupBox("Feature")
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+        layout = QFormLayout()
 
         # Mode
         self.mode_combo = QComboBox()
@@ -40,45 +71,47 @@ class TransactionTab(QWidget):
             self.mode_combo.addItem(mode.name, mode)
         self.mode_combo.currentIndexChanged.connect(self._on_mode_change)
 
-        # Type Combo
+        # Type
         self.type_combo = QComboBox()
         self.type_combo.currentIndexChanged.connect(self._on_feature_change)
 
-        # EDC ID Combo + Refresh button
+        # EDC ID + Refresh
         self.edc_combo = QComboBox()
         self.edc_combo.currentIndexChanged.connect(self._on_edc_change)
+
         self.refresh_btn = QPushButton("Refresh")
         self.refresh_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.refresh_btn.clicked.connect(self.refresh_clicked.emit)
-        
+
         edc_row = QWidget()
         edc_layout = QHBoxLayout(edc_row)
         edc_layout.setContentsMargins(0, 0, 0, 0)
         edc_layout.setSpacing(6)
         edc_layout.addWidget(self.edc_combo)
         edc_layout.addWidget(self.refresh_btn)
-        
-        feature_layout.addRow("Mode:", self.mode_combo)
-        feature_layout.addRow("Type:", self.type_combo)
-        feature_layout.addRow("EDC ID:", edc_row)
 
-        feature_group.setLayout(feature_layout)
+        layout.addRow("Mode:", self.mode_combo)
+        layout.addRow("Type:", self.type_combo)
+        layout.addRow("EDC ID:", edc_row)
 
-        # Transaction Data
-        trx_group = QGroupBox("Transaction Data")
-        trx_layout = QFormLayout()
+        group.setLayout(layout)
+        return group
+    
+    def _build_trx_group(self):
+        group = QGroupBox("Transaction Data")
+        layout = QFormLayout()
 
         self.amount_input = QLineEdit("0")
         self.tip_amount_input = QLineEdit("0")
         self.trace_input = QLineEdit()
-        
-        # Transaction ID Row
+
+        # Transaction ID
         self.transaction_id_input = QLineEdit()
         self.transaction_id_input.setPlaceholderText("Enter or auto-generate")
-        
+
         self.generate_id_checkbox = QCheckBox("Auto-generate")
         self.generate_id_checkbox.stateChanged.connect(self._on_generate_id_changed)
-        
+
         trx_id_row = QWidget()
         trx_id_layout = QHBoxLayout(trx_id_row)
         trx_id_layout.setContentsMargins(0, 0, 0, 0)
@@ -86,19 +119,18 @@ class TransactionTab(QWidget):
         trx_id_layout.addWidget(self.transaction_id_input)
         trx_id_layout.addWidget(self.generate_id_checkbox)
 
-        # Amount/Tip Row
+        # Amount / Tip
         amount_tip_row = QWidget()
         amount_tip_layout = QHBoxLayout(amount_tip_row)
         amount_tip_layout.setContentsMargins(0, 0, 0, 0)
         amount_tip_layout.setSpacing(10)
-        
         amount_tip_layout.addWidget(QLabel("Amount:"))
         amount_tip_layout.addWidget(self.amount_input)
         amount_tip_layout.addSpacing(20)
         amount_tip_layout.addWidget(QLabel("Tip:"))
         amount_tip_layout.addWidget(self.tip_amount_input)
-        
-        # Tenor + Plan row (for Installment)
+
+        # Installment
         self.tenor_combo = QComboBox()
         for val in ["3", "6", "9", "12", "18", "24"]:
             self.tenor_combo.addItem(f"{val} Months", val)
@@ -107,39 +139,31 @@ class TransactionTab(QWidget):
         for val in ["None", "1", "2", "3"]:
             label = "None" if val == "None" else f"Plan {val}"
             self.plan_combo.addItem(label, val)
-            
+
         installment_row = QWidget()
         installment_layout = QHBoxLayout(installment_row)
         installment_layout.setContentsMargins(0, 0, 0, 0)
-        installment_layout.setSpacing(10)  # same as amount_tip_row for consistency
-
+        installment_layout.setSpacing(10)
         installment_layout.addWidget(QLabel("Tenor:"))
         installment_layout.addWidget(self.tenor_combo)
         installment_layout.addSpacing(20)
         installment_layout.addWidget(QLabel("Plan:"))
         installment_layout.addWidget(self.plan_combo)
 
-        trx_layout.addRow(amount_tip_row)
-        trx_layout.addRow(installment_row)
-        trx_layout.addRow("Trace:", self.trace_input)
-        trx_layout.addRow("Transaction ID:", trx_id_row)
+        layout.addRow(amount_tip_row)
+        layout.addRow(installment_row)
+        layout.addRow("Trace:", self.trace_input)
+        layout.addRow("Transaction ID:", trx_id_row)
 
-        trx_group.setLayout(trx_layout)
-
-        # Action Button
-        btn_layout = QHBoxLayout()
+        group.setLayout(layout)
+        return group
+    
+    def _build_btn_layout(self):
+        layout = QHBoxLayout()
         self.send_btn = QPushButton("Send Transaction")
         self.send_btn.clicked.connect(self._on_send_clicked)
-        btn_layout.addWidget(self.send_btn)
-
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(feature_group)
-        main_layout.addWidget(trx_group)
-        main_layout.addLayout(btn_layout)
-        self.setLayout(main_layout)
-
-        # Initialize default state
-        self._on_mode_change(0)
+        layout.addWidget(self.send_btn)
+        return layout
         
     def _on_mode_change(self, index: int):
         """
@@ -243,3 +267,6 @@ class TransactionTab(QWidget):
         self.edc_combo.clear()
         for edc_id in edc_devices:
             self.edc_combo.addItem(edc_id, edc_id)
+            
+    def add_log(self, log_type: LogType, message: str):
+        self.log_view.add_log(log_type, message)
