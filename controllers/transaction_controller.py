@@ -14,11 +14,31 @@ class TransactionController(DeviceController):
         self.view = view
         self.client = client
         self.config = config
+        self.build = config.build
         self.payload: SignedPayload | None = None
+        
+        # Apply build config to UI
+        self._apply_build_config()
         
         # Connect signals
         self.view.send_clicked.connect(self._send_transaction)
         self.view.refresh_clicked.connect(self.get_active_edc_devices)
+        
+    def _apply_build_config(self):
+        build = self.build
+
+        if build.ECR_MODE_SELECTABLE:
+            self.view.set_mode_visible(True)
+            self.view.set_mode_enabled(True)
+
+            if build.ECR_MODE:
+                self.view.set_mode(build.ECR_MODE)
+
+        else:
+            self.view.set_mode_visible(False)
+
+            if build.ECR_MODE:
+                self.view.set_mode(build.ECR_MODE)
         
     def _send_transaction(self, type: TransactionType, edc_id: str, trx: Transaction):
         async def trx_task():

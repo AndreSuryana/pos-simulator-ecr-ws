@@ -9,10 +9,10 @@ class MainWindow(QWidget):
     """
     Main application window.
     """
-    def __init__(self):
+    def __init__(self, title):
         super().__init__()
 
-        self.setWindowTitle(version.APP_TITLE)
+        self.setWindowTitle(title)
         self.resize(1000, 650)
         self.setMinimumSize(800, 500)
 

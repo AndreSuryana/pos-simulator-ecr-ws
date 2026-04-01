@@ -270,3 +270,26 @@ class TransactionTab(QWidget):
             
     def add_log(self, log_type: LogType, message: str):
         self.log_view.add_log(log_type, message)
+        
+    def set_mode_visible(self, visible: bool):
+        """Show/hide Mode field (label + combo)."""
+        form_layout: QFormLayout = self.findChild(QFormLayout)
+
+        # Row 0 = Mode (based on your layout order)
+        label_item = form_layout.itemAt(0, QFormLayout.ItemRole.LabelRole)
+        field_item = form_layout.itemAt(0, QFormLayout.ItemRole.FieldRole)
+
+        if label_item:
+            label_item.widget().setVisible(visible)
+        if field_item:
+            field_item.widget().setVisible(visible)
+
+    def set_mode_enabled(self, enabled: bool):
+        """Enable/disable mode selection."""
+        self.mode_combo.setEnabled(enabled)
+
+    def set_mode(self, mode: EcrMode):
+        """Force select a mode programmatically."""
+        index = self.mode_combo.findData(mode)
+        if index >= 0:
+            self.mode_combo.setCurrentIndex(index)

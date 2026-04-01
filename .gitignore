@@ -5,7 +5,6 @@ __pycache__/
 *.pyd
 
 # Nuitka / PyInstaller build artifacts
-build/
 dist/
 *.build/
 *.dist/

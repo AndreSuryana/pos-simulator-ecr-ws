@@ -15,6 +15,8 @@ class ConfigManager:
         self._path = Path(self._get_app_dir()) / filename
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._config = {}
+    
+        self.build = None
 
         # Load existing config or create a default one
         self.load()
