@@ -1,20 +1,21 @@
-import os
 import sys
 import importlib
 
 
 def get_build_variant(default: str = "default") -> str:
     """
-    Parse CLI argument: --variant=<name>
-    Priority: ENV > CLI > default
+    Priority: build_info > CLI > default
     """
-    env_variant = os.getenv("APP_VARIANT")
-    if env_variant:
-        return env_variant.lower()
-    
+    try:
+        from build.build_info import APP_VARIANT
+        return APP_VARIANT.lower()
+    except Exception:
+        pass
+
     for arg in sys.argv:
         if arg.startswith("--variant="):
             return arg.split("=", 1)[1].strip().lower()
+
     return default
 
 

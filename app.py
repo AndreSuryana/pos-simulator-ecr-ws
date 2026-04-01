@@ -1,4 +1,3 @@
-import os
 import asyncio
 from utils.config import ConfigManager
 from controllers import MainController
@@ -9,7 +8,11 @@ from build.loader import get_build_variant, load_build_config
 
 
 def get_app_version():
-    return os.getenv("APP_VERSION", "dev")
+    try:
+        from build.build_info import APP_VERSION
+        return APP_VERSION
+    except Exception:
+        return "dev"
 
 
 def main():
