@@ -38,7 +38,7 @@ jobs:
       - name: Extract Version
         shell: pwsh
         run: |
-          $version = "$(env:GITHUB_REF_NAME)".Substring(1)
+          $version = "${env:GITHUB_REF_NAME}".Substring(1)
           echo "APP_VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Build
