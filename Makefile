@@ -33,7 +33,7 @@ endif
 # ===== Nuitka =====
 NUITKA = python -m nuitka
 NUITKA_FLAGS = --standalone --onefile \
-               --enable-plugin=pyqt5 \
+               --enable-plugin=pyside6 \
                $(WINDOWS_CONSOLE_MODE) \
                --include-module=websockets \
                --include-module=websockets.asyncio \

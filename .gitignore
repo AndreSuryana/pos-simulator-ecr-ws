@@ -1,11 +1,22 @@
 # Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 
-# Nuitka / PyInstaller build artifacts
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python packaging
+*.egg-info/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# Nuitka / Build artifacts
 dist/
+build/
 build/build_info.py
 *.build/
 *.dist/
@@ -14,9 +25,16 @@ build/build_info.py
 *.bin
 *.exe
 
-# IDE/Editor config
+# Logs
+*.log
+
+# IDE / Editor
 .vscode/
 .idea/
 
-# Ignore app config
+# OS
+.DS_Store
+Thumbs.db
+
+# App config
 config.json

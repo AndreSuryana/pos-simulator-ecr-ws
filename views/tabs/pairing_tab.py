@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QFormLayout, QVBoxLayout, QLineEdit, QPushButton,
     QGroupBox, QComboBox, QSizePolicy, QHBoxLayout, QSplitter
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PySide6.QtCore import Qt, Signal
 from common.logging import LogType
 from views.log_view import LogView
 
@@ -25,9 +25,9 @@ class PairingTab(QWidget):
         Emitted when the "Refresh" button clicked to refresh list of EDC ID.
     """
 
-    pair_clicked = pyqtSignal(str, str)
-    unpair_clicked = pyqtSignal(str)
-    refresh_clicked = pyqtSignal()
+    pair_clicked = Signal(str, str)
+    unpair_clicked = Signal(str)
+    refresh_clicked = Signal()
 
     def __init__(self):
         super().__init__()

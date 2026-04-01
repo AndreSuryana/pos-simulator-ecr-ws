@@ -1,10 +1,10 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (
     QWidget, QFormLayout, QGroupBox, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QComboBox, QSizePolicy, QLabel, 
     QMessageBox, QCheckBox, QSplitter
 )
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 from common.logging import LogType
 from ecr.mode import EcrMode
 from ecr.type import *
@@ -25,8 +25,8 @@ class TransactionTab(QWidget):
     refresh_clicked()
         Emitted when the "Refresh" button clicked to refresh list of EDC ID.
     """
-    send_clicked = pyqtSignal(TransactionType, str, Transaction)
-    refresh_clicked = pyqtSignal()
+    send_clicked = Signal(TransactionType, str, Transaction)
+    refresh_clicked = Signal()
     
     def __init__(self):
         super().__init__()

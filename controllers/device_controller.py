@@ -1,7 +1,7 @@
 import asyncio
 from services import WebSocketService
 from utils.payload import SignedPayload
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 
 class DeviceController:

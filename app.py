@@ -3,7 +3,7 @@ from utils.config import ConfigManager
 from controllers import MainController
 from qasync import QEventLoop
 from views import MainWindow
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from build.loader import get_build_variant, load_build_config
 
 
@@ -46,7 +46,10 @@ def main():
     controller.show_app()    
 
     # Clean up after close
-    app.aboutToQuit.connect(lambda: asyncio.create_task(controller.cleanup()))
+    async def on_exit():
+        await controller.cleanup()
+        
+    app.aboutToQuit.connect(lambda: asyncio.ensure_future(on_exit()))
 
     with loop:
         loop.run_forever()

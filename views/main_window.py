@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget
 )
 from views.tabs import *
 from views import BottomBar
+
 
 class MainWindow(QWidget):
     """

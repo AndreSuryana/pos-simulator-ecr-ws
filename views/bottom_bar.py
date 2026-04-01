@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
-from PyQt5.QtCore import pyqtSignal
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PySide6.QtCore import Signal
 
 _BTN_CONNECT = "Connect"
 _BTN_DISCONNECT = "Disconnect"
@@ -17,8 +17,8 @@ class BottomBar(QWidget):
         Emitted when the user clicks the "Disconnect" button.
     """
 
-    connect_clicked = pyqtSignal(str)
-    disconnect_clicked = pyqtSignal()
+    connect_clicked = Signal(str)
+    disconnect_clicked = Signal()
 
     def __init__(self, url: str = None):
         super().__init__()

@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTextEdit, QAction
-from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QFont
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QTextEdit
+from PySide6.QtGui import QTextCharFormat, QColor, QTextCursor, QFont, QAction
 from common.logging import LogType
 from datetime import datetime
 

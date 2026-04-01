@@ -2,7 +2,7 @@ import asyncio
 from .device_controller import DeviceController
 from ecr.type import TransactionType
 from models import Transaction
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 from services import WebSocketService
 from utils.config import ConfigManager
 from utils.payload import SignedPayload

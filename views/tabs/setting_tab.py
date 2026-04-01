@@ -1,6 +1,6 @@
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QIntValidator
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QIntValidator
+from PySide6.QtWidgets import (
     QWidget, QFormLayout, QVBoxLayout, QHBoxLayout, QLineEdit,
     QTextEdit, QGroupBox, QPushButton, QComboBox, QFileDialog
 )
@@ -21,7 +21,7 @@ class SettingTab(QWidget):
         collected configuration data as a dictionary.
     """
 
-    save_clicked = pyqtSignal(dict)
+    save_clicked = Signal(dict)
 
     def __init__(self):
         super().__init__()

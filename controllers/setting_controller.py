@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QMessageBox
 from utils.config import ConfigManager
 from views.tabs import SettingTab
 
@@ -12,7 +12,7 @@ class SettingController(QObject):
     config_updated()
         Emitted when there's configuration updates.
     """
-    config_updated = pyqtSignal()
+    config_updated = Signal()
     
     def __init__(self, view: SettingTab, config: ConfigManager):
         super().__init__()

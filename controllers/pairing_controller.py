@@ -3,7 +3,7 @@ from .device_controller import DeviceController
 from services import WebSocketService
 from utils.payload import SignedPayload
 from views.tabs import PairingTab
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 
 class PairingController(DeviceController):

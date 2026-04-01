@@ -1,6 +1,6 @@
 import asyncio
 import json
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox
 from .pairing_controller import PairingController
 from .setting_controller import SettingController
 from .transaction_controller import TransactionController
