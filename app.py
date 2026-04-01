@@ -35,7 +35,8 @@ def main():
     asyncio.set_event_loop(loop)
     
     # Initialize view and controller
-    main_window = MainWindow(build.APP_TITLE)
+    app_title = f"{build.APP_NAME} v{app_version}"
+    main_window = MainWindow(app_title)
     controller = MainController(app, main_window, config)
 
     # Show window
