@@ -39,7 +39,8 @@ NUITKA_FLAGS = --standalone --onefile \
                --include-module=websockets.asyncio \
                --include-module=websockets.asyncio.client \
                --include-module=build.build_info \
-			   --include-package=build
+			   --include-package=build \
+			   --assume-yes-for-downloads
 
 # ===== Build Info =====
 BUILD_INFO = build/build_info.py

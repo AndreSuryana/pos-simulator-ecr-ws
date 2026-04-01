@@ -28,13 +28,6 @@ jobs:
           pip install -r requirements.txt
           pip install "nuitka[onefile]"
 
-      - name: Install Make
-        run: choco install make
-
-      - name: Install Dependency Walker
-        run: |
-          choco install dependencywalker --no-progress
-
       - name: Extract Version
         shell: pwsh
         run: |
