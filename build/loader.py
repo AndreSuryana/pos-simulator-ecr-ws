@@ -5,7 +5,12 @@ import importlib
 def get_build_variant(default: str = "default") -> str:
     """
     Parse CLI argument: --variant=<name>
+    Priority: ENV > CLI > default
     """
+    env_variant = os.getenv("APP_VARIANT")
+    if env_variant:
+        return env_variant.lower()
+    
     for arg in sys.argv:
         if arg.startswith("--variant="):
             return arg.split("=", 1)[1].strip().lower()

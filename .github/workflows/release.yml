@@ -1,0 +1,74 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        variant: [default, bri]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install nuitka
+
+      - name: Extract Version
+        run: echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: |
+          make build VARIANT=${{ matrix.variant }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.variant }}
+          path: dist/*.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate Changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configurationJson: |
+            {
+              "template": "# Changelog\n\n{{CHANGELOG}}",
+              "categories": [
+                { "title": "Features", "labels": ["feat"] },
+                { "title": "Fixes", "labels": ["fix"] },
+                { "title": "Others", "labels": ["chore", "refactor"] }
+              ]
+            }
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: artifacts/**/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

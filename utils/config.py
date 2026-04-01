@@ -17,6 +17,7 @@ class ConfigManager:
         self._config = {}
     
         self.build = None
+        self.app_version = "dev"
 
         # Load existing config or create a default one
         self.load()

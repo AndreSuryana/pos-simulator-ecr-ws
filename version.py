@@ -1,3 +1,0 @@
-APP_NAME = "POS Simulator"
-APP_VERSION = "v1.2.2"
-APP_TITLE = f"{APP_NAME} {APP_VERSION}"
