@@ -28,14 +28,22 @@ jobs:
           pip install -r requirements.txt
           pip install "nuitka[onefile]"
 
+      - name: Install Make
+        run: choco install make
+
+      - name: Install Dependency Walker
+        run: |
+          choco install dependencywalker --no-progress
+
       - name: Extract Version
-        run: echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> $env:GITHUB_ENV
+        shell: pwsh
+        run: |
+          $version = "$(env:GITHUB_REF_NAME)".Substring(1)
+          echo "APP_VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Build
         run: |
           make build VARIANT=${{ matrix.variant }}
-        env:
-          NUITKA_ASSUME_YES_FOR_DOWNLOADS: "1"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
