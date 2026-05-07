@@ -183,7 +183,7 @@ class TransactionTab(QWidget):
             return
 
         # Use the .all() method to include common + specific transaction types
-        for trx_type in transaction_enum.all():
+        for trx_type in transaction_enum:
             self.type_combo.addItem(trx_type.label, trx_type)
         
 
@@ -198,16 +198,16 @@ class TransactionTab(QWidget):
         # Disable all input first and enable based on the selected type
         self._set_inputs()
 
-        if type == CommonTransactionType.SALE_REGULAR:
+        if type in (PvsTransactionType.SALE_REGULAR, BriTransactionType.SALE_REGULAR, PvsTransactionType.SALE_PAYMENT):
             self._set_inputs(amount=True, tip_amount=True, transaction_id=True)
             
-        elif type == CommonTransactionType.SALE_INSTALLMENT:
+        elif type in (PvsTransactionType.SALE_INSTALLMENT, BriTransactionType.SALE_INSTALLMENT):
             self._set_inputs(amount=True, tenor=True, plan=True, transaction_id=True)
 
-        elif type == CommonTransactionType.VOID_REGULAR:
+        elif type in (PvsTransactionType.VOID_REGULAR, BriTransactionType.VOID_REGULAR):
             self._set_inputs(trace=True, transaction_id=True)
 
-        elif type in (CommonTransactionType.LAST_ECR_TRX, CommonTransactionType.ANY_ECR_TRX):
+        elif type in (PvsTransactionType.LAST_ECR_TRX, PvsTransactionType.ANY_ECR_TRX, BriTransactionType.LAST_ECR_TRX, BriTransactionType.ANY_ECR_TRX):
             self._set_inputs(transaction_id=True)
 
         elif hasattr(type, "id") and type.id.startswith("qr"):

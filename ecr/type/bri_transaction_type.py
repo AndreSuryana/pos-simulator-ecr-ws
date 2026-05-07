@@ -1,15 +1,22 @@
 from enum import Enum
 from .transaction_type import TransactionType
-from .common_transaction_type import CommonTransactionType
 
 
 class BriTransactionType(TransactionType, Enum):
     """Transaction types specific to BRI."""
     
+    SALE_REGULAR        = ("saleRegular", "Sale (Regular)")
+    SALE_INSTALLMENT    = ("saleInstallment", "Sale Installment")
+    
     QR_BRI              = ("qrisBri", "QRIS BRI")
     QR_CHECK_STATUS     = ("checkStatusQR", "Check QR Status")
-    
-    @classmethod
-    def all(cls):
-        """Return all common + BRI-specific transaction types."""
-        return list(CommonTransactionType) + list(cls)
+
+    VOID_REGULAR        = ("voidRegular", "Void (Regular)")
+    SETTLEMENT          = ("settlement", "Settlement")
+
+    LAST_ECR_TRX        = ("getLastEcrTransaction", "Get Last ECR Transaction")
+    ANY_ECR_TRX         = ("getAnyEcrTransaction", "Get Any ECR Transaction")
+
+    ECHO_TEST           = ("echoTest", "Echo Test")
+    CHECK_CONNECTION    = ("checkConnection", "Check Connection")
+    CHECK_VERSION       = ("checkVersion", "Check Version")
