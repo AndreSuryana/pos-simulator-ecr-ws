@@ -32,15 +32,20 @@ endif
 
 # ===== Nuitka =====
 NUITKA = python -m nuitka
+
 NUITKA_FLAGS = --standalone --onefile \
                --enable-plugin=pyside6 \
                $(WINDOWS_CONSOLE_MODE) \
+               --assume-yes-for-downloads \
+               --lto=yes \
+               --include-qt-plugins=platforms,imageformats \
+               --onefile-tempdir-spec=%TEMP%\\pos_sim_%PID% \
+               --nofollow-import-to=tests \
                --include-module=websockets \
                --include-module=websockets.asyncio \
                --include-module=websockets.asyncio.client \
                --include-module=build.build_info \
-			   --include-package=build \
-			   --assume-yes-for-downloads
+               --include-package=build
 
 # ===== Build Info =====
 BUILD_INFO = build/build_info.py
@@ -63,7 +68,7 @@ build: $(BUILD_INFO)
 
 clean:
 	rm -rf dist *.build *.dist *.spec *.onefile-build *.exe
-	rm -f build/build_info.py
+	rm -rf build/build_info.py
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 

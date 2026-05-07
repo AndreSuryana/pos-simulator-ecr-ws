@@ -16,7 +16,6 @@ pip-wheel-metadata/
 
 # Nuitka / Build artifacts
 dist/
-build/
 build/build_info.py
 *.build/
 *.dist/
