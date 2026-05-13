@@ -29,14 +29,6 @@ class Transaction:
             return generated_id
 
         if self.id:
-            # Use provided ID but ensure it matches expected length
-            trx_id = str(self.id)
-            if len(trx_id) < id_len:
-                # Zero-pad to the right if shorter
-                trx_id = trx_id.ljust(id_len, '0')
-            elif len(trx_id) > id_len:
-                # Trim if too long
-                trx_id = trx_id[:id_len]
-            return trx_id
+            return self.id
 
         return None
