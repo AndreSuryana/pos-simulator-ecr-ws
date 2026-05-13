@@ -30,6 +30,8 @@ class PvsTransactionType(TransactionType, Enum):
     QR_OVO              = ("qrisOvo", "QRIS OVO")
     QR_SHOPEEPAY        = ("qrisShopeePay", "QRIS ShopeePay")
     
+    QR_CHECK_STATUS     = ("edcCheckStatus", "QR Check Status")
+    
     LAST_ECR_TRX        = ("getLastEcrTransaction", "Get Last ECR Transaction")
     ANY_ECR_TRX         = ("getAnyEcrTransaction", "Get Any ECR Transaction")
 

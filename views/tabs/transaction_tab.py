@@ -198,7 +198,13 @@ class TransactionTab(QWidget):
         # Disable all input first and enable based on the selected type
         self._set_inputs()
 
-        if type in (PvsTransactionType.SALE_REGULAR, BriTransactionType.SALE_REGULAR, PvsTransactionType.SALE_PAYMENT):
+        if (
+            type in (
+                PvsTransactionType.SALE_REGULAR,
+                BriTransactionType.SALE_REGULAR,
+                PvsTransactionType.SALE_PAYMENT,
+            )
+        ):
             self._set_inputs(amount=True, tip_amount=True, transaction_id=True)
             
         elif type in (PvsTransactionType.SALE_INSTALLMENT, BriTransactionType.SALE_INSTALLMENT):
@@ -207,7 +213,15 @@ class TransactionTab(QWidget):
         elif type in (PvsTransactionType.VOID_REGULAR, BriTransactionType.VOID_REGULAR):
             self._set_inputs(trace=True, transaction_id=True)
 
-        elif type in (PvsTransactionType.LAST_ECR_TRX, PvsTransactionType.ANY_ECR_TRX, BriTransactionType.LAST_ECR_TRX, BriTransactionType.ANY_ECR_TRX):
+        elif (
+            type in (
+                PvsTransactionType.LAST_ECR_TRX,
+                PvsTransactionType.ANY_ECR_TRX,
+                PvsTransactionType.QR_CHECK_STATUS,
+                BriTransactionType.LAST_ECR_TRX,
+                BriTransactionType.ANY_ECR_TRX,
+            )
+        ):
             self._set_inputs(transaction_id=True)
 
         elif hasattr(type, "id") and type.id.startswith("qr"):
