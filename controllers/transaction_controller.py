@@ -71,6 +71,9 @@ class TransactionController(DeviceController):
                 
             if trx.trace:
                 data_field["traceNumber"] = trx.trace
+                
+            if trx.invoice:
+                data_field["invoiceNumber"] = trx.invoice
             
             data = self.payload.make("SEND_TO_EDC", {
                 "edc_id": edc_id,

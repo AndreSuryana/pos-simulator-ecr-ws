@@ -103,6 +103,7 @@ class TransactionTab(QWidget):
 
         self.amount_input = QLineEdit("0")
         self.tip_amount_input = QLineEdit("0")
+        self.invoice_input = QLineEdit()
         self.trace_input = QLineEdit()
 
         # Transaction ID
@@ -153,6 +154,7 @@ class TransactionTab(QWidget):
         layout.addRow(amount_tip_row)
         layout.addRow(installment_row)
         layout.addRow("Trace:", self.trace_input)
+        layout.addRow("Invoice:", self.invoice_input)
         layout.addRow("Transaction ID:", trx_id_row)
 
         group.setLayout(layout)
@@ -223,9 +225,12 @@ class TransactionTab(QWidget):
             )
         ):
             self._set_inputs(transaction_id=True)
+            
+        elif type in (BriTransactionType.QR_CHECK_STATUS, BriTransactionType.QR_REFUND):
+            self._set_inputs(invoice=True, transaction_id=True)
 
         elif hasattr(type, "id") and type.id.startswith("qr"):
-            self._set_inputs(amount=True, transaction_id=True)
+            self._set_inputs(amount=True, tip_amount=True, transaction_id=True)
         
     def _on_edc_change(self, index: int):
         self.edc_id = self.edc_combo.currentData()
@@ -237,7 +242,7 @@ class TransactionTab(QWidget):
         if is_checked:
             self.transaction_id_input.clear()
         
-    def _set_inputs(self, amount = False, tip_amount = False, trace = False, transaction_id = False, tenor = False, plan = False):
+    def _set_inputs(self, amount = False, tip_amount = False, trace = False, transaction_id = False, tenor = False, plan = False, invoice = False):
         self.amount_input.setEnabled(amount)
         self.tip_amount_input.setEnabled(tip_amount)
         self.trace_input.setEnabled(trace)
@@ -245,6 +250,7 @@ class TransactionTab(QWidget):
         self.generate_id_checkbox.setEnabled(transaction_id)
         self.tenor_combo.setEnabled(tenor)
         self.plan_combo.setEnabled(plan)
+        self.invoice_input.setEnabled(invoice)
 
     def _on_send_clicked(self):
         if not self.edc_id:
@@ -274,6 +280,9 @@ class TransactionTab(QWidget):
             trx.is_generate_id = True
         elif self.transaction_id_input.isEnabled():
             trx.id = self.transaction_id_input.text().strip()
+            
+        if self.invoice_input.isEnabled():
+            trx.invoice = self.invoice_input.text().strip()
 
         self.send_clicked.emit(type, self.edc_id, trx)
         

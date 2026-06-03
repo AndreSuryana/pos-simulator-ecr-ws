@@ -10,6 +10,7 @@ class Transaction:
     tenor: str | None = None
     plan: str | None = None
     trace: str | None = None
+    invoice: str | None = None
     id: str | None = None
     is_generate_id: bool = False
     

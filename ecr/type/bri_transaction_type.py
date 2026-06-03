@@ -9,7 +9,9 @@ class BriTransactionType(TransactionType, Enum):
     SALE_INSTALLMENT    = ("saleInstallment", "Sale Installment")
     
     QR_BRI              = ("qrisBri", "QRIS BRI")
+    QR_TAP              = ("qrisTap", "QRIS Tap")
     QR_CHECK_STATUS     = ("checkStatusQR", "Check QR Status")
+    QR_REFUND           = ("qrisRefund", "Refund QR")
 
     VOID_REGULAR        = ("voidRegular", "Void (Regular)")
     SETTLEMENT          = ("settlement", "Settlement")
