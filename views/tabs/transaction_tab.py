@@ -219,7 +219,6 @@ class TransactionTab(QWidget):
             type in (
                 PvsTransactionType.LAST_ECR_TRX,
                 PvsTransactionType.ANY_ECR_TRX,
-                PvsTransactionType.QR_CHECK_STATUS,
                 BriTransactionType.LAST_ECR_TRX,
                 BriTransactionType.ANY_ECR_TRX,
             )
@@ -231,6 +230,9 @@ class TransactionTab(QWidget):
 
         elif hasattr(type, "id") and type.id.startswith("qr"):
             self._set_inputs(amount=True, tip_amount=True, transaction_id=True)
+        
+        elif hasattr(type, "id") and type.id.startswith("checkStatus"):
+            self._set_inputs(amount=True, transaction_id=True)
         
     def _on_edc_change(self, index: int):
         self.edc_id = self.edc_combo.currentData()
