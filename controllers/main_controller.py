@@ -10,6 +10,8 @@ from services import LogBus
 from utils.config import ConfigManager
 from utils.payload import SignedPayload
 from views import MainWindow
+from views.theme import Theme
+
 
 class MainController:
 
@@ -56,7 +58,7 @@ class MainController:
         self.view.bottom_bar.disconnect_clicked.connect(self._disconnect_websocket)
     
     def _connect_websocket(self, url: str):
-        self.view.bottom_bar.set_status_label("Connecting...", "orange")
+        self.view.bottom_bar.set_status_label("Connecting...", Theme.WARNING)
 
         # Save url to config file
         self.config.set("ws.url", url)
@@ -107,7 +109,7 @@ class MainController:
             data = parsed.get("data", {})
             
             if type == "REGISTER_POS_DONE":
-                self.view.bottom_bar.set_status_label("Ready", "green")
+                self.view.bottom_bar.set_status_label("Ready", Theme.SUCCESS)
                 
             elif type == "PAIR_POS_DONE":
                 edc_id = data.get("edc_id")
@@ -137,7 +139,7 @@ class MainController:
 
             elif type == "ERROR":
                 error_msg = f"{data.get("reason_code")} - {data.get("reason")}"
-                self.view.bottom_bar.set_status_label(error_msg, "red")
+                self.view.bottom_bar.set_status_label(error_msg, Theme.ERROR)
                 QMessageBox.warning(
                     self.view,
                     "Error",
@@ -150,13 +152,13 @@ class MainController:
     def _on_websocket_close(self):
         print("[INFO] WebSocket closed")
         self.log_bus.emit(LogType.ERROR, "WebSocket closed")
-        self.view.bottom_bar.set_status_label("Disconnected", "red")
+        self.view.bottom_bar.set_status_label("Disconnected", Theme.ERROR)
         self.view.bottom_bar.set_btn_connect()
     
     def _on_websocket_error(self, e: Exception):
         print(f"[ERROR] WebSocket error: {e}")
         self.log_bus.emit(LogType.ERROR, f"WebSocket error: {e}")
-        self.view.bottom_bar.set_status_label("Disconnected", "red")
+        self.view.bottom_bar.set_status_label("Disconnected", Theme.ERROR)
         self.view.bottom_bar.set_btn_connect()
     
     def _check_config(self):

@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QTextEdit
 from PySide6.QtGui import QTextCharFormat, QColor, QTextCursor, QFont, QAction
 from common.logging import LogType
 from datetime import datetime
+from views.theme import Theme
 
 
 class LogView(QTextEdit):
@@ -38,15 +39,15 @@ class LogView(QTextEdit):
         }
 
         color_map = {
-            LogType.RECEIVED: QColor("green"),
-            LogType.SENT: QColor("blue"),
-            LogType.INFO: QColor("gray"),
-            LogType.WARNING: QColor("orange"),
-            LogType.ERROR: QColor("red"),
+            LogType.RECEIVED: Theme.SUCCESS,
+            LogType.SENT: Theme.INFO,
+            LogType.INFO: Theme.TEXT_PRIMARY,
+            LogType.WARNING: Theme.WARNING,
+            LogType.ERROR: Theme.ERROR,
         }
 
         icon = icon_map.get(log_type, "")
-        color = color_map.get(log_type, QColor("black"))
+        color = color_map.get(log_type, Theme.TEXT_PRIMARY)
 
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)

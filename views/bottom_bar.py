@@ -1,5 +1,8 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QColor
+from views.theme import Theme
+
 
 _BTN_CONNECT = "Connect"
 _BTN_DISCONNECT = "Disconnect"
@@ -34,7 +37,7 @@ class BottomBar(QWidget):
         self.connect_btn.clicked.connect(self._on_connect_btn_clicked)
 
         self.status_label = QLabel()
-        self.set_status_label("Disconnected", "red")
+        self.set_status_label("Disconnected", Theme.ERROR)
 
         layout.addWidget(QLabel("WebSocket URL:"))
         layout.addWidget(self.url_input)
@@ -62,9 +65,12 @@ class BottomBar(QWidget):
     def set_websocket_url(self, url: str):
         self.url_input.setText(url)
 
-    def set_status_label(self, text: str, color: str = "black"):
+    def set_status_label(self, text: str, color: QColor = None):
+        if color is None:
+            color = Theme.TEXT_PRIMARY
+
         self.status_label.setText(f"Status: {text}")
-        self.status_label.setStyleSheet(f"color: {color}; font-weight: bold")
+        self.status_label.setStyleSheet(f"color: {color.name()}; font-weight: bold;")
         
     def set_btn_connect(self):
         self.connect_btn.setText(_BTN_CONNECT)

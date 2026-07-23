@@ -5,6 +5,7 @@ from qasync import QEventLoop
 from views import MainWindow
 from PySide6.QtWidgets import QApplication
 from build.loader import get_build_variant, load_build_config
+from views.theme import Theme
 
 
 def get_app_version():
@@ -34,6 +35,8 @@ def main():
     
     # Create Qt app
     app = QApplication([])
+    Theme.initialize(app)
+    
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
     
