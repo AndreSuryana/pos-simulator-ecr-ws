@@ -231,8 +231,9 @@ class TransactionTab(QWidget):
         elif hasattr(type, "id") and type.id.startswith("qr"):
             self._set_inputs(amount=True, tip_amount=True, transaction_id=True)
         
-        elif hasattr(type, "id") and type.id.startswith("checkStatus"):
+        elif type is PvsTransactionType.QR_CHECK_STATUS or (hasattr(type, "id") and type.id.startswith("checkStatus")):
             self._set_inputs(amount=True, transaction_id=True)
+            self.amount_input.setText("") # amount is optional for QR check status
         
     def _on_edc_change(self, index: int):
         self.edc_id = self.edc_combo.currentData()
