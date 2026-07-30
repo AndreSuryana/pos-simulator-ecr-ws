@@ -12,6 +12,9 @@ class PvsTransactionType(TransactionType, Enum):
     VOID_REGULAR        = ("voidRegular", "Void (Regular)")
     SETTLEMENT          = ("settlement", "Settlement")
     
+    # QR Generate (all)
+    QR_ALL              = ("qrisAll", "QRIS (All)")
+    
     # QR Bank
     QR_BNI              = ("qrisBni", "QRIS BNI")
     QR_BRI              = ("qrisBri", "QRIS BRI")
