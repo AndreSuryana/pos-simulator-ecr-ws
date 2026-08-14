@@ -9,9 +9,12 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build & Release (Windows)
+  build:
+    name: Build (Windows)
     runs-on: windows-latest
+
+    outputs:
+      version: ${{ steps.app_version.outputs.version }}
 
     steps:
       - name: Checkout Code
@@ -30,31 +33,41 @@ jobs:
           node-version: "24"
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2
 
-      - name: Get Version from wails.json
+      - name: Get Version
         id: app_version
-        shell: bash
+        shell: pwsh
         run: |
-          VERSION=$(jq -r '.info.productVersion' wails.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          $version = (Get-Content wails.json | ConvertFrom-Json).info.productVersion
 
-      - name: Enforce Version Bump (Guard)
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            Write-Error "productVersion is missing from wails.json"
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $version"
+
+      - name: Enforce Version Bump
         shell: bash
         run: |
-          if [ $(git tag -l "v${{ steps.app_version.outputs.version }}") ]; then
-            echo "::error::Version v${{ steps.app_version.outputs.version }} already exists! Please bump 'productVersion' in wails.json."
+          if git rev-parse "v${{ steps.app_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Version v${{ steps.app_version.outputs.version }} already exists!"
+            echo "::error::Please bump 'productVersion' in wails.json."
             exit 1
           fi
 
       - name: Build Application
         run: wails build -clean -m -platform windows/amd64
 
-      - name: Package Executable into ZIP
-        shell: bash
-        run: |
-          cd build/bin
-          zip pos-simulator-windows-v${{ steps.app_version.outputs.version }}.zip *.exe
+      - name: Package Application
+        uses: thedoctor0/zip-release@0.7.6
+        with:
+          type: zip
+          filename: pos-simulator-windows-v${{ steps.app_version.outputs.version }}.zip
+          directory: build/bin
+          path: .
+          exclusions: "*.zip"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -63,13 +76,25 @@ jobs:
           path: build/bin/*.zip
           retention-days: 7
 
+  release:
+    name: Release
+    needs: build
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: pos-simulator-windows-v${{ needs.build.outputs.version }}
+          path: release
+
       - name: Publish GitHub Release
-        if: github.event.pull_request.merged == true
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.app_version.outputs.version }}
+          tag_name: v${{ needs.build.outputs.version }}
           target_commitish: main
-          files: build/bin/*.zip
+          files: release/*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -11,7 +11,7 @@ A WebSocket-based Electronic Cash Register (ECR) simulator. Built using [Wails v
 
 ## 🚀 Development Quick Start
 
-Ensure you have Go, Node.js, and the Wails CLI installed globally (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`).
+Ensure you have Go, Node.js, and the Wails CLI installed globally (`go install github.com/wailsapp/wails/v2/cmd/wails@v2`).
 
 1. **Clone the repository:**
 
