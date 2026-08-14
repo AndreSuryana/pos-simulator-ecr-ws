@@ -3,15 +3,19 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"pos-simulator-ecr-ws/internal/config"
+	"pos-simulator-ecr-ws/internal/ecr"
 	"pos-simulator-ecr-ws/internal/edc"
 	"pos-simulator-ecr-ws/internal/logger"
 	"pos-simulator-ecr-ws/internal/protocol"
 	"pos-simulator-ecr-ws/internal/register"
 	"pos-simulator-ecr-ws/internal/transaction"
 	"pos-simulator-ecr-ws/internal/websocket"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails application.
@@ -64,6 +68,28 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 // ----------------------------------------------------------------------------
+// System
+// ----------------------------------------------------------------------------
+
+// OpenFileBrowser opens a native OS file dialog and returns the selected file path.
+// If the user cancels the dialog, it returns an empty string.
+func (a *App) OpenFileBrowser(title string, filterDisplayName string, filterPattern string) (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: title,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: filterDisplayName,
+				Pattern:     filterPattern,
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+}
+
+// ----------------------------------------------------------------------------
 // Configuration
 // ----------------------------------------------------------------------------
 
@@ -83,6 +109,14 @@ func (a *App) UpdateConfig(cfg config.Config) error {
 	return nil
 }
 
+// Modes returns all supported ECR modes
+func (a *App) Modes() []ecr.Mode {
+	return []ecr.Mode{
+		ecr.ModePVS,
+		ecr.ModeBRI,
+	}
+}
+
 // ----------------------------------------------------------------------------
 // Connection
 // ----------------------------------------------------------------------------
@@ -92,31 +126,31 @@ func (a *App) Connect() error {
 	cfg := a.config.Config()
 
 	tlsConfig, err := websocket.LoadTLSConfig(
-		cfg.ClientCertPath,
-		cfg.ClientKeyPath,
-		cfg.ServerCACertPath,
-		cfg.SkipTLSVerify,
+		cfg.TLS.ClientCertPath,
+		cfg.TLS.ClientKeyPath,
+		cfg.TLS.ServerCACertPath,
+		cfg.TLS.SkipVerify,
 	)
 	if err != nil {
 		return err
 	}
 
 	client, err := protocol.NewClient(
-		cfg.APIKey,
-		cfg.PrivateKey,
+		cfg.Auth.APIKey,
+		cfg.Auth.PrivateKey,
 	)
 	if err != nil {
 		return err
 	}
 
 	a.protocol = client
-	a.register = register.New(client, cfg.POSID, cfg.MID)
-	a.devices = edc.New(client, cfg.POSID)
+	a.register = register.New(client, cfg.General.POSID, cfg.General.MID)
+	a.devices = edc.New(client, cfg.General.POSID)
 	a.transaction = transaction.New(client)
 
 	return a.websocket.Connect(
 		a.ctx,
-		cfg.ServerURL,
+		cfg.ActiveEnvironment().URL,
 		tlsConfig,
 	)
 }
@@ -142,6 +176,20 @@ func (a *App) Devices() []edc.Device {
 	}
 
 	return a.devices.All()
+}
+
+// RefreshDevices requests an updated device list from the WebSocket server.
+func (a *App) RefreshDevices() error {
+	if a.devices == nil {
+		return errors.New("device manager not initialized")
+	}
+
+	message, err := a.devices.List()
+	if err != nil {
+		return err
+	}
+
+	return a.send(message)
 }
 
 // Pair pairs an EDC device.
@@ -221,7 +269,7 @@ func (a *App) onDisconnect(err error) {
 
 // onMessage is called for every incoming WebSocket message.
 func (a *App) onMessage(data []byte) {
-	a.logger.Debug("← " + string(data))
+	a.logger.Debug(string(data))
 
 	msgType, err := protocol.MessageType(data)
 	if err != nil {
@@ -266,7 +314,7 @@ func (a *App) send(message any) error {
 		return fmt.Errorf("marshal protocol message: %w", err)
 	}
 
-	a.logger.Debug("→ " + string(data))
+	a.logger.Debug(string(data))
 
 	if err := a.websocket.Send(data); err != nil {
 		return err
@@ -295,17 +343,41 @@ func (a *App) handleRegister(data []byte) error {
 
 // handleDeviceList handles a LIST_EDC message.
 func (a *App) handleDeviceList(data []byte) error {
-	return a.devices.HandleList(data)
+	err := a.devices.HandleList(data)
+	if err != nil {
+		return err
+	}
+
+	// Notify React frontend that devices array changed
+	runtime.EventsEmit(a.ctx, "devices:updated", a.devices.All())
+
+	return nil
 }
 
 // handlePair handles a PAIR_POS_DONE message.
 func (a *App) handlePair(data []byte) error {
-	return a.devices.HandlePair(data)
+	err := a.devices.HandlePair(data)
+	if err != nil {
+		return err
+	}
+
+	// Notify React frontend that devices array changed
+	runtime.EventsEmit(a.ctx, "devices:updated", a.devices.All())
+
+	return nil
 }
 
 // handleUnpair handles an UNPAIR_EDC_DONE message.
 func (a *App) handleUnpair(data []byte) error {
-	return a.devices.HandleUnpair(data)
+	err := a.devices.HandleUnpair(data)
+	if err != nil {
+		return err
+	}
+
+	// Notify React frontend that devices array changed
+	runtime.EventsEmit(a.ctx, "devices:updated", a.devices.All())
+
+	return nil
 }
 
 // handleTransaction handles a SEND_TO_POS message.
