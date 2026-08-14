@@ -1,83 +1,103 @@
 name: Build & Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, closed]
 
 permissions:
   contents: write
 
 jobs:
   build:
+    name: Build (Windows)
     runs-on: windows-latest
 
-    strategy:
-      matrix:
-        variant: [default, bri]
+    if: github.event.action != 'closed' || github.event.pull_request.merged == true
+
+    outputs:
+      version: ${{ steps.app_version.outputs.version }}
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install "nuitka[onefile]"
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
 
-      - name: Extract Version
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Get Version
+        id: app_version
         shell: pwsh
         run: |
-          $version = "${env:GITHUB_REF_NAME}".Substring(1)
-          echo "APP_VERSION=$version" >> $env:GITHUB_ENV
+          $version = (Get-Content wails.json | ConvertFrom-Json).info.productVersion
 
-      - name: Build
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            Write-Error "productVersion is missing from wails.json"
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $version"
+
+      - name: Enforce Version Bump
+        shell: bash
         run: |
-          make build VARIANT=${{ matrix.variant }}
+          if git rev-parse "v${{ steps.app_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Version v${{ steps.app_version.outputs.version }} already exists!"
+            echo "::error::Please bump 'productVersion' in wails.json."
+            exit 1
+          fi
 
-      - name: Upload artifacts
+      - name: Build Application
+        run: wails build -clean -m -platform windows/amd64
+
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-${{ matrix.variant }}
-          path: dist/*.exe
+          name: pos-simulator-windows-v${{ steps.app_version.outputs.version }}
+          path: build/bin/*.exe
+          retention-days: 7
 
   release:
+    name: Release
     needs: build
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Artifacts
+      - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: pos-simulator-windows-v${{ needs.build.outputs.version }}
+          path: release
 
-      - name: Generate Changelog
-        id: changelog
-        uses: mikepenz/release-changelog-builder-action@v4
+      - name: Package Application
+        uses: thedoctor0/zip-release@0.7.6
         with:
-          configurationJson: |
-            {
-              "template": "# Changelog\n\n{{CHANGELOG}}",
-              "categories": [
-                { "title": "Features", "labels": ["feat"] },
-                { "title": "Fixes", "labels": ["fix"] },
-                { "title": "Others", "labels": ["chore", "refactor"] }
-              ]
-            }
+          type: zip
+          filename: pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
+          directory: release
+          path: .
+          exclusions: "*.zip"
 
-      - name: Create Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ steps.changelog.outputs.changelog }}
-          files: artifacts/**/*.exe
+          tag_name: v${{ needs.build.outputs.version }}
+          target_commitish: main
+          files: release/pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

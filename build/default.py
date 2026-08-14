@@ -1,4 +1,0 @@
-APP_NAME = "POS Simulator"
-
-ECR_MODE_SELECTABLE = True
-ECR_MODE = None
