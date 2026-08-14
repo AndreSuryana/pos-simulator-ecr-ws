@@ -60,20 +60,11 @@ jobs:
       - name: Build Application
         run: wails build -clean -m -platform windows/amd64
 
-      - name: Package Application
-        uses: thedoctor0/zip-release@0.7.6
-        with:
-          type: zip
-          filename: pos-simulator-windows-v${{ steps.app_version.outputs.version }}.zip
-          directory: build/bin
-          path: .
-          exclusions: "*.zip"
-
-      - name: Upload Artifact
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: pos-simulator-windows-v${{ steps.app_version.outputs.version }}
-          path: build/bin/*.zip
+          path: build/bin/*.exe
           retention-days: 7
 
   release:
@@ -89,12 +80,21 @@ jobs:
           name: pos-simulator-windows-v${{ needs.build.outputs.version }}
           path: release
 
+      - name: Package Application
+        uses: thedoctor0/zip-release@0.7.6
+        with:
+          type: zip
+          filename: pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
+          directory: release
+          path: .
+          exclusions: "*.zip"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.build.outputs.version }}
           target_commitish: main
-          files: release/*.zip
+          files: release/pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
