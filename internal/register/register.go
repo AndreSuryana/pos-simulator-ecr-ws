@@ -20,24 +20,24 @@ func New(
 	protocol *protocol.Client,
 	posID string,
 	mid string,
-) (*Register, error) {
+) *Register {
 	request := Request{
 		POSID: posID,
 		MID:   mid,
 	}
 
-	if err := request.Validate(); err != nil {
-		return nil, err
-	}
-
 	return &Register{
 		protocol: protocol,
 		request:  request,
-	}, nil
+	}
 }
 
 // Register builds a REGISTER_POS request.
 func (r *Register) Register() (protocol.Message[Request], error) {
+	if err := r.request.Validate(); err != nil {
+		return protocol.Message[Request]{}, err
+	}
+
 	return protocol.Build(
 		r.protocol,
 		protocol.TypeRegisterPOS,

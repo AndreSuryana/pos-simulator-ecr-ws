@@ -1,5 +1,7 @@
 package protocol
 
+import "encoding/json"
+
 // Type represents an ECR protocol message type.
 type Type string
 
@@ -21,3 +23,16 @@ const (
 	TypeSendToPOS       Type = "SEND_TO_POS"
 	TypeError           Type = "ERROR"
 )
+
+// MessageType extracts the protocol message type from a raw message.
+func MessageType(data []byte) (Type, error) {
+	var message struct {
+		Type Type `json:"type"`
+	}
+
+	if err := json.Unmarshal(data, &message); err != nil {
+		return "", err
+	}
+
+	return message.Type, nil
+}
