@@ -293,6 +293,9 @@ func (a *App) onMessage(data []byte) {
 	case protocol.TypeSendToPOS:
 		err = a.handleTransaction(data)
 
+	case protocol.TypeError:
+		err = a.handleError(data)
+
 	default:
 		a.logger.Warn("Unhandled protocol message", "type", msgType)
 		return
@@ -396,6 +399,40 @@ func (a *App) handleTransaction(data []byte) error {
 			"message", response.DataTransaction.ResponseMessage,
 		)
 	}
+
+	return nil
+}
+
+// handlerError parses an ERROR message from server.
+func (a *App) handleError(data []byte) error {
+	var errResp struct {
+		Status int `json:"status"`
+		Data   struct {
+			ReasonCode int    `json:"reason_code"`
+			Reason     string `json:"reason"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(data, &errResp); err != nil {
+		a.logger.Error("Failed to parse server error payload", err)
+		return err
+	}
+
+	baseMsg := errResp.Data.Reason
+	if baseMsg == "" {
+		baseMsg = "An unknown server error occurred"
+	}
+
+	var finalMsg string
+	if errResp.Data.ReasonCode != 0 {
+		finalMsg = fmt.Sprintf("%s (Code: %d)", baseMsg, errResp.Data.ReasonCode)
+	} else if errResp.Status != 0 {
+		finalMsg = fmt.Sprintf("%s (Status: %d)", baseMsg, errResp.Status)
+	} else {
+		finalMsg = baseMsg
+	}
+
+	runtime.EventsEmit(a.ctx, "server:error", finalMsg)
 
 	return nil
 }

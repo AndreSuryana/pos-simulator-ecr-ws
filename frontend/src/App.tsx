@@ -133,10 +133,19 @@ export default function App() {
       );
     });
 
+    const unsubscribeServerError = EventsOn(
+      "server:error",
+      (errMsg: string) => {
+        toast.error(errMsg);
+        addLog("error", errMsg);
+      },
+    );
+
     return () => {
       if (unsubscribeDevices) unsubscribeDevices();
       if (unsubscribeLog) unsubscribeLog();
       if (unsubscribeStatus) unsubscribeStatus();
+      if (unsubscribeServerError) unsubscribeServerError();
     };
   }, [addLog, refreshDevices]);
 
