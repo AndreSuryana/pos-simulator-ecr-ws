@@ -355,7 +355,11 @@ export function SettingView({
       </div>
 
       {/* Modal Footer */}
-      <div className="px-6 py-4 border-t border-app-border bg-app-surface shrink-0 flex justify-end">
+      <div className="px-6 py-4 border-t border-app-border bg-app-surface shrink-0 flex justify-between items-center">
+        <span className="text-xs text-content-muted/60 font-mono select-none">
+          v{import.meta.env.VITE_APP_VERSION || "0.0.0-dev"}
+        </span>
+
         <button
           type="submit"
           form="settings-form"
