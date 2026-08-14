@@ -55,12 +55,25 @@ export function TransactionView({
         const fetchedModes = await Modes();
         if (fetchedModes && fetchedModes.length > 0) {
           setModes(fetchedModes);
-          setSelectedMode(fetchedModes[0]);
+
+          // Check localStorage for previously selected mode. Default to first mode.
+          const savedModeId = localStorage.getItem("selected-ecr-mode");
+          let targetMode = fetchedModes[0];
+
+          if (savedModeId) {
+            const matchedMode = fetchedModes.find((m) => m.ID === savedModeId);
+            if (matchedMode) {
+              targetMode = matchedMode;
+            }
+          }
+
+          setSelectedMode(targetMode);
+
           if (
-            fetchedModes[0].TransactionTypes &&
-            fetchedModes[0].TransactionTypes.length > 0
+            targetMode.TransactionTypes &&
+            targetMode.TransactionTypes.length > 0
           ) {
-            setSelectedType(fetchedModes[0].TransactionTypes[0]);
+            setSelectedType(targetMode.TransactionTypes[0]);
           }
         }
       } catch (err) {
@@ -77,8 +90,12 @@ export function TransactionView({
   }, [devices, selectedEdc]);
 
   const handleModeChange = (modeId: string) => {
+    // Persist the selection to localStorage
+    localStorage.setItem("selected-ecr-mode", modeId);
+
     const matchedMode = modes.find((m) => m.ID === modeId) || null;
     setSelectedMode(matchedMode);
+
     if (
       matchedMode &&
       matchedMode.TransactionTypes &&
