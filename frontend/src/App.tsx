@@ -68,6 +68,7 @@ export default function App() {
   };
 
   const refreshDevices = useCallback(async () => {
+    if (!connected) return;
     try {
       await RefreshDevices();
     } catch (err: any) {
@@ -101,8 +102,8 @@ export default function App() {
 
         const isConn = await Connected();
         setConnected(isConn);
+
         await refreshDevices();
-        addLog("info", "POS Simulator initialized.");
       } catch (err: any) {
         addLog("error", `Initialization error: ${err?.message || err}`);
       }
