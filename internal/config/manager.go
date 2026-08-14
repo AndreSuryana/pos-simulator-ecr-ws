@@ -90,6 +90,10 @@ func (m *Manager) load() error {
 	data, err := os.ReadFile(m.path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if migrated, ok, mErr := migrateLegacy(); mErr == nil && ok {
+				m.config = migrated
+			}
+
 			if err := os.MkdirAll(filepath.Dir(m.path), 0o755); err != nil {
 				return fmt.Errorf("create config directory: %w", err)
 			}
