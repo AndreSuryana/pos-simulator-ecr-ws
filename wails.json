@@ -1,13 +1,21 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "pos-simulator-ecr-ws",
-  "outputfilename": "pos-simulator-ecr-ws",
+  "outputfilename": "pos-simulator-ecr-ws-v2.0.0",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Andre Suryana",
-    "email": "kadek.andre@primavista-solusi.com"
+    "email": "Andresuryana17@gmail.com"
+  },
+  "info": {
+    "companyName": "Andre Suryana",
+    "productName": "POS Simulator ECR WebSocket",
+    "productVersion": "2.0.0",
+    "productString": "pos-simulator-ecr-ws",
+    "copyright": "Copyright © 2026 Andre Suryana",
+    "comments": "A WebSocket-based ECR Simulator"
   }
 }
