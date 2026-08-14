@@ -1,0 +1,194 @@
+import React, { useState } from "react";
+import { Link2, Unlink, RefreshCw, Smartphone } from "lucide-react";
+import { edc, main } from "../../wailsjs/go/models";
+
+interface PairingViewProps {
+  devices?: edc.Device[];
+  onRefreshDevices?: () => Promise<void> | void;
+  onPairDevice?: (req: main.PairRequest) => Promise<void>;
+  onUnpairDevice?: (req: main.UnpairRequest) => Promise<void>;
+}
+
+export function PairingView({
+  devices = [],
+  onRefreshDevices,
+  onPairDevice,
+  onUnpairDevice,
+}: PairingViewProps) {
+  // Pairing Form Inputs
+  const [pairEdcId, setPairEdcId] = useState<string>("");
+  const [pairCode, setPairCode] = useState<string>("");
+
+  // Refresh State
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const handlePairSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pairEdcId.trim() || !pairCode.trim()) {
+      alert("Please enter both EDC ID and Pair Code.");
+      return;
+    }
+
+    const payload = new main.PairRequest({
+      edcId: pairEdcId.trim(),
+      pairCode: pairCode.trim(),
+    });
+
+    if (onPairDevice) {
+      await onPairDevice(payload);
+    } else {
+      console.log("Pair Request:", payload);
+    }
+
+    // Reset inputs
+    setPairEdcId("");
+    setPairCode("");
+  };
+
+  const handleUnpairSubmit = async (targetEdcId: string) => {
+    if (!targetEdcId) return;
+
+    const payload = new main.UnpairRequest({
+      edcId: targetEdcId,
+    });
+
+    if (onUnpairDevice) {
+      await onUnpairDevice(payload);
+    } else {
+      console.log("Unpair Request:", payload);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      if (onRefreshDevices) {
+        await onRefreshDevices();
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col md:flex-row h-full w-full gap-4 p-5 overflow-hidden font-sans text-slate-100">
+      {/* LEFT PANEL: Pair Control */}
+      <div className="w-full md:w-80 lg:w-96 shrink-0 h-full">
+        {/* Pairing Form Card */}
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col gap-4 shadow-sm h-full">
+          {/* Panel Header - min-h-10 for baseline symmetry, allows growth */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3 shrink-0 min-h-10">
+            <Link2 className="w-4 h-4 text-indigo-400" />
+            <h2 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+              Pair Terminal Device
+            </h2>
+          </div>
+
+          <form onSubmit={handlePairSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-slate-400 font-medium">
+                EDC ID
+              </label>
+              <input
+                type="text"
+                value={pairEdcId}
+                onChange={(e) => setPairEdcId(e.target.value)}
+                placeholder="e.g. EDC-001"
+                className="bg-slate-950 border border-slate-800 text-sm rounded-md px-3 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-slate-400 font-medium">
+                Pair Code
+              </label>
+              <input
+                type="text"
+                value={pairCode}
+                onChange={(e) => setPairCode(e.target.value)}
+                placeholder="e.g. 123456"
+                className="bg-slate-950 border border-slate-800 text-sm rounded-md px-3 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={!pairEdcId.trim() || !pairCode.trim()}
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 text-white font-medium py-2.5 rounded-md text-xs transition cursor-pointer"
+            >
+              <Link2 className="w-4 h-4" />
+              <span>Pair Device</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL: Active Terminals Visual Grid */}
+      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col gap-4 overflow-hidden shadow-sm h-full">
+        {/* Panel Header - min-h-10 for baseline symmetry, allows growth */}
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0 min-h-10">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-4 h-4 text-indigo-400" />
+            <h2 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+              Paired EDC Devices ({devices.length})
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 rounded-md text-xs font-medium transition cursor-pointer"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`}
+            />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+          </button>
+        </div>
+
+        {/* Device Cards Grid */}
+        <div className="flex-1 overflow-y-auto pr-1">
+          {devices.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-3">
+              <Smartphone className="w-10 h-10 stroke-1 opacity-40" />
+              <p className="text-sm">No paired EDC devices found.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+              {devices.map((device) => (
+                <div
+                  key={device.edc_id}
+                  className="bg-slate-950 border border-slate-800/80 rounded-lg p-3 flex items-center justify-between gap-3 hover:border-slate-700 transition shadow-sm"
+                >
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
+                      Terminal ID
+                    </span>
+                    <span
+                      className="font-mono text-sm font-bold text-slate-200 truncate"
+                      title={device.edc_id}
+                    >
+                      {device.edc_id}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUnpairSubmit(device.edc_id)}
+                    className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-md text-[11px] font-medium transition-colors cursor-pointer focus:ring-2 focus:ring-rose-500/50 outline-none"
+                    title="Unpair this terminal"
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    <span>Unpair</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
