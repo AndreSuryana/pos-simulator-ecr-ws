@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { RefreshCw, Send, Sliders, FileText } from "lucide-react";
 import { Modes } from "../../wailsjs/go/main/App";
 import { ecr, edc, main } from "../../wailsjs/go/models";
@@ -21,12 +22,14 @@ const PLAN_OPTIONS = [
 
 interface TransactionViewProps {
   devices?: edc.Device[];
+  connected: Boolean;
   onRefreshDevices?: () => void;
   onSendTransaction?: (req: main.SendTransactionRequest) => Promise<void>;
 }
 
 export function TransactionView({
   devices = [],
+  connected = false,
   onRefreshDevices,
   onSendTransaction,
 }: TransactionViewProps) {
@@ -104,13 +107,25 @@ export function TransactionView({
     return data;
   };
 
+  const handleRefresh = () => {
+    if (!connected) {
+      toast.error("Cannot refresh: WebSocket is disconnected");
+      return;
+    }
+    if (onRefreshDevices) onRefreshDevices();
+  };
+
   const handleSend = async () => {
+    if (!connected) {
+      toast.error("Cannot send transaction: WebSocket is disconnected");
+      return;
+    }
     if (!selectedEdc) {
-      alert("Please select an EDC device first.");
+      toast.error("Please select an EDC device first", { icon: "⚠️" });
       return;
     }
     if (!selectedType) {
-      alert("Please select a valid transaction type.");
+      toast.error("Please select a valid transaction type", { icon: "⚠️" });
       return;
     }
 
@@ -207,7 +222,7 @@ export function TransactionView({
 
               <button
                 type="button"
-                onClick={onRefreshDevices}
+                onClick={handleRefresh}
                 className="flex items-center gap-1.5 px-3 py-2 bg-app-overlay hover:bg-content-muted/20 text-content-primary/90 rounded-md text-xs font-medium transition cursor-pointer shrink-0"
                 title="Refresh Device List"
               >

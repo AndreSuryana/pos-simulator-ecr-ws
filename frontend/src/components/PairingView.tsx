@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
 import { Link2, Unlink, RefreshCw, Smartphone } from "lucide-react";
 import { edc, main } from "../../wailsjs/go/models";
 
 interface PairingViewProps {
   devices?: edc.Device[];
+  connected: Boolean;
   onRefreshDevices?: () => Promise<void> | void;
   onPairDevice?: (req: main.PairRequest) => Promise<void>;
   onUnpairDevice?: (req: main.UnpairRequest) => Promise<void>;
@@ -11,6 +13,7 @@ interface PairingViewProps {
 
 export function PairingView({
   devices = [],
+  connected = false,
   onRefreshDevices,
   onPairDevice,
   onUnpairDevice,
@@ -24,8 +27,14 @@ export function PairingView({
 
   const handlePairSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!connected) {
+      toast.error("Cannot pair: WebSocket is disconnected");
+      return;
+    }
+
     if (!pairEdcId.trim() || !pairCode.trim()) {
-      alert("Please enter both EDC ID and Pair Code.");
+      toast.error("Please enter both EDC ID and Pair Code", { icon: "⚠️" });
       return;
     }
 
@@ -48,6 +57,11 @@ export function PairingView({
   const handleUnpairSubmit = async (targetEdcId: string) => {
     if (!targetEdcId) return;
 
+    if (!connected) {
+      toast.error("Cannot unpair: WebSocket is disconnected");
+      return;
+    }
+
     const payload = new main.UnpairRequest({
       edcId: targetEdcId,
     });
@@ -61,6 +75,12 @@ export function PairingView({
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
+
+    if (!connected) {
+      toast.error("Cannot refresh: WebSocket is disconnected");
+      return;
+    }
+
     setIsRefreshing(true);
     try {
       if (onRefreshDevices) {

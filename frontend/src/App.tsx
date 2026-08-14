@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { HeaderBar, ActiveTab } from "./components/HeaderBar";
 import { LogConsole, LogEntry, LogType } from "./components/LogConsole";
 import { TransactionView } from "./components/TransactionView";
@@ -11,7 +12,6 @@ import {
   Connected,
   Config,
   UpdateConfig,
-  Devices,
   RefreshDevices,
   Pair,
   Unpair,
@@ -145,14 +145,18 @@ export default function App() {
         await Disconnect();
         setConnected(false);
         addLog("warn", "Disconnected from server.");
+        toast.error("WebSocket disconnected");
       } else {
         addLog("info", `Connecting to server (${activeHostPort})...`);
         await Connect();
         setConnected(true);
         addLog("info", "Connected successfully.");
+        toast.success("Connected to server");
       }
     } catch (err: any) {
-      addLog("error", `Connection toggle failed: ${err?.message || err}`);
+      const errMsg = err?.message || err;
+      addLog("error", `Connection toggle failed: ${errMsg}`);
+      toast.error(`Connection failed: ${errMsg}`);
       setConnected(false);
     }
   };
@@ -178,44 +182,53 @@ export default function App() {
       setAppConfig(updatedConfig);
       setActiveHostPort(parseHostPort(matchedEnv.url));
 
-      addLog("info", `Switched environment to ${matchedEnv.name}`);
+      toast.success(`Environment changed to ${matchedEnv.name}`);
     } catch (err: any) {
-      addLog("error", `Failed to switch environment: ${err?.message || err}`);
+      toast.error("Failed to switch environment");
     }
   };
 
   // Pair Device Handler
   const handlePairDevice = async (req: main.PairRequest) => {
     try {
-      addLog("sent", `Pairing terminal ${req.edcId}...`);
       await Pair(req);
+
       addLog("received", `Successfully paired ${req.edcId}`);
+      toast.success(`Successfully paired ${req.edcId}`);
+
       await refreshDevices();
     } catch (err: any) {
-      addLog("error", `Pairing failed: ${err?.message || err}`);
+      var errMsg = err?.message || err;
+      addLog("error", `Pairing failed: ${errMsg}`);
+      toast.error(`Pairing failed: ${errMsg}`);
     }
   };
 
   // Unpair Device Handler
   const handleUnpairDevice = async (req: main.UnpairRequest) => {
     try {
-      addLog("sent", `Unpairing terminal ${req.edcId}...`);
       await Unpair(req);
+
       addLog("received", `Successfully unpaired ${req.edcId}`);
+      toast.success(`Unpaired ${req.edcId}`);
+
       await refreshDevices();
     } catch (err: any) {
-      addLog("error", `Unpairing failed: ${err?.message || err}`);
+      var errMsg = err?.message || err;
+      addLog("error", `Unpairing failed: ${errMsg}`);
+      toast.error(`Unpairing failed: ${errMsg}`);
     }
   };
 
   // Send Transaction Handler
   const handleSendTransaction = async (req: main.SendTransactionRequest) => {
     try {
-      addLog("sent", `Dispatching transaction to ${req.edcId}`);
       await SendTransaction(req);
       addLog("received", `Transaction request sent to backend successfully.`);
     } catch (err: any) {
-      addLog("error", `Transaction dispatch failed: ${err?.message || err}`);
+      var errMsg = err?.message || err;
+      addLog("error", `Transaction dispatch failed: ${errMsg}`);
+      toast.error(`Transaction failed: ${errMsg}`);
     }
   };
 
@@ -223,10 +236,14 @@ export default function App() {
     try {
       await UpdateConfig(newCfg);
       setAppConfig(newCfg);
+
       addLog("info", "Configuration saved to backend successfully.");
+      toast.success("Settings saved");
+
       setIsSettingsOpen(false); // Close modal on save
     } catch (err: any) {
       addLog("error", `Failed to save configuration: ${err?.message || err}`);
+      toast.error("Failed to save settings");
     }
   };
 
@@ -249,6 +266,7 @@ export default function App() {
         {activeTab === "pairing" && (
           <PairingView
             devices={devices}
+            connected={connected}
             onRefreshDevices={refreshDevices}
             onPairDevice={handlePairDevice as any}
             onUnpairDevice={handleUnpairDevice as any}
@@ -257,6 +275,7 @@ export default function App() {
         {activeTab === "transaction" && (
           <TransactionView
             devices={devices}
+            connected={connected}
             onRefreshDevices={refreshDevices}
             onSendTransaction={handleSendTransaction as any}
           />
@@ -277,6 +296,30 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "var(--bg-surface)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+            fontSize: "13px",
+          },
+          success: {
+            iconTheme: {
+              primary: "var(--status-success)",
+              secondary: "var(--bg-surface)",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "var(--status-danger)",
+              secondary: "var(--bg-surface)",
+            },
+          },
+        }}
+      />
     </div>
   );
 }
