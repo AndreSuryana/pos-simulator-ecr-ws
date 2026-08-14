@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Trash2 } from "lucide-react";
 
 export type LogType = "sent" | "received" | "info" | "warn" | "error";
@@ -35,7 +35,7 @@ export function LogConsole({ logs, onClear }: LogConsoleProps) {
   return (
     <div className="flex flex-col h-48 bg-app-base border-t border-app-border text-xs font-mono shrink-0">
       {/* Console Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-app-surface/90 border-b border-app-border text-content-muted font-sans">
+      <div className="flex items-center justify-between px-4 py-2 bg-app-surface/90 border-b border-app-border text-content-muted font-sans select-none">
         <div className="flex items-center gap-3">
           <span className="font-semibold text-content-primary">
             Terminal Logs
@@ -58,24 +58,22 @@ export function LogConsole({ logs, onClear }: LogConsoleProps) {
       {/* Log Stream */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-3 space-y-1 font-mono"
+        className="flex-1 overflow-y-auto p-3 space-y-1 font-mono select-text"
       >
         {logs.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-content-muted/50 italic">
+          <div className="h-full flex items-center justify-center text-content-muted/50 italic select-none">
             No logs recorded yet.
           </div>
         ) : (
           logs.map((log) => {
             const style = LOG_TYPE_STYLES[log.type] || LOG_TYPE_STYLES.info;
             return (
-              <div
-                key={log.id}
-                className="flex items-start gap-2 leading-relaxed"
-              >
-                <span className="text-content-muted/80 shrink-0">
-                  [{log.timestamp}]
+              <div key={log.id} className="leading-relaxed py-0.5">
+                <span className="text-content-muted/80">
+                  [{log.timestamp}]{" "}
                 </span>
-                <span className="shrink-0 select-none">{style.icon}</span>
+                {/* select-none removes the icon from the clipboard result */}
+                <span className="select-none mr-2">{style.icon}</span>
                 <span className={`${style.colorClass} break-all`}>
                   {log.message}
                 </span>
