@@ -1,13 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>pos-simulator-ecr-ws</title>
-</head>
-<body>
-<div id="root"></div>
-<script src="./src/main.tsx" type="module"></script>
-</body>
-</html>
 
+<head>
+  <meta charset="UTF-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>pos-simulator-ecr-ws</title>
+  <script>
+       (
+        calStorage.getItem("app-theme") === "dark" ||
+        localStorage.getItem("app-theme") &&
+          ndow.matchMedia("(prefers-color-scheme: dark)").matches)
+      {
+        cument.documentElement.classList.add("dark");
+        }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script src="./src/main.tsx" type="module"></script>
+</body>
+
+</html>

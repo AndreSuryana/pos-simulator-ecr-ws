@@ -114,14 +114,14 @@ export function SettingView({
   };
 
   return (
-    <div className="h-full w-full flex flex-col font-sans text-slate-100 overflow-hidden">
+    <div className="h-full w-full flex flex-col font-sans text-content-primary overflow-hidden">
       {/* Modal Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0 bg-slate-900">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-app-border shrink-0 bg-app-surface">
         <div>
-          <h1 className="text-base font-semibold text-slate-100">
+          <h1 className="text-base font-semibold text-content-primary">
             System Configuration
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             Manage POS information, API credentials, and TLS certificates.
           </p>
         </div>
@@ -129,7 +129,7 @@ export function SettingView({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 rounded-md text-content-muted hover:text-content-primary hover:bg-app-overlay transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -137,95 +137,95 @@ export function SettingView({
       </div>
 
       {/* Modal Scrollable Body */}
-      <div className="flex-1 overflow-y-auto p-6 bg-slate-950">
+      <div className="flex-1 overflow-y-auto p-6 bg-app-base">
         <form
           id="settings-form"
           onSubmit={handleSave}
           className="max-w-4xl mx-auto flex flex-col gap-5 pb-4"
         >
           {/* 1. General Settings Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col gap-4">
-            <h2 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-app-surface border border-app-border rounded-lg p-5 flex flex-col gap-4">
+            <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-2">
               <Sliders className="w-4 h-4" />
               <span>General Settings</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   POS ID
                 </label>
                 <input
                   type="text"
                   value={posId}
                   onChange={(e) => setPosId(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                  className="bg-app-base border border-app-border text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   MID (Merchant ID)
                 </label>
                 <input
                   type="text"
                   value={mid}
                   onChange={(e) => setMid(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                  className="bg-app-base border border-app-border text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   Transaction ID Length
                 </label>
                 <input
                   type="number"
                   value={trxIdLen}
                   onChange={(e) => setTrxIdLen(Number(e.target.value))}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                  className="bg-app-base border border-app-border text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                 />
               </div>
             </div>
           </div>
 
           {/* 2. Authentication Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col gap-4">
-            <h2 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-app-surface border border-app-border rounded-lg p-5 flex flex-col gap-4">
+            <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-2">
               <Key className="w-4 h-4" />
               <span>Authentication</span>
             </h2>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   API Key
                 </label>
                 <input
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                  className="bg-app-base border border-app-border text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   Private Key (PEM format)
                 </label>
                 <textarea
                   rows={4}
                   value={privateKey}
                   onChange={(e) => setPrivateKey(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-md p-3 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed resize-none"
+                  className="bg-app-base border border-app-border text-xs rounded-md p-3 text-content-primary focus:outline-none focus:border-brand-primary font-mono leading-relaxed resize-none"
                 />
               </div>
             </div>
           </div>
 
           {/* 3. TLS Security Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col gap-4">
-            <h2 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-app-surface border border-app-border rounded-lg p-5 flex flex-col gap-4">
+            <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-2">
               <Shield className="w-4 h-4" />
               <span>TLS Configuration</span>
             </h2>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-400 font-medium">
+              <label className="text-xs text-content-muted font-medium">
                 TLS Mode
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -238,7 +238,7 @@ export function SettingView({
                     key={item.id}
                     type="button"
                     onClick={() => handleTlsModeChange(item.id as any)}
-                    className={`py-2 px-3 text-xs rounded-md border font-medium transition cursor-pointer ${tlsMode === item.id ? "bg-indigo-600/20 border-indigo-500 text-indigo-300" : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"}`}
+                    className={`py-2 px-3 text-xs rounded-md border font-medium transition cursor-pointer ${tlsMode === item.id ? "bg-brand-primary/20 border-brand-primary text-brand-hover" : "bg-app-base border-app-border text-content-muted hover:border-app-overlay"}`}
                   >
                     {item.label}
                   </button>
@@ -248,7 +248,7 @@ export function SettingView({
 
             <div className="space-y-3 pt-2">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   Server CA Cert Path
                 </label>
                 <div className="flex gap-2">
@@ -257,7 +257,7 @@ export function SettingView({
                     disabled={tlsMode === "none"}
                     value={caCertPath}
                     onChange={(e) => setCaCertPath(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-800 disabled:opacity-30 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    className="flex-1 bg-app-base border border-app-border disabled:opacity-30 text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                   />
                   <button
                     type="button"
@@ -269,7 +269,7 @@ export function SettingView({
                         "*.crt;*.pem",
                       )
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-md text-xs font-medium transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-app-overlay hover:bg-content-muted/20 disabled:opacity-30 text-content-primary/90 rounded-md text-xs font-medium transition cursor-pointer"
                   >
                     <FolderOpen className="w-3.5 h-3.5" />
                     <span>Browse</span>
@@ -278,7 +278,7 @@ export function SettingView({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   Client Cert Path
                 </label>
                 <div className="flex gap-2">
@@ -287,7 +287,7 @@ export function SettingView({
                     disabled={tlsMode !== "mutual"}
                     value={clientCertPath}
                     onChange={(e) => setClientCertPath(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-800 disabled:opacity-30 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    className="flex-1 bg-app-base border border-app-border disabled:opacity-30 text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                   />
                   <button
                     type="button"
@@ -299,7 +299,7 @@ export function SettingView({
                         "*.crt;*.pem",
                       )
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-md text-xs font-medium transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-app-overlay hover:bg-content-muted/20 disabled:opacity-30 text-content-primary/90 rounded-md text-xs font-medium transition cursor-pointer"
                   >
                     <FolderOpen className="w-3.5 h-3.5" />
                     <span>Browse</span>
@@ -308,7 +308,7 @@ export function SettingView({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400 font-medium">
+                <label className="text-xs text-content-muted font-medium">
                   Client Key Path
                 </label>
                 <div className="flex gap-2">
@@ -317,7 +317,7 @@ export function SettingView({
                     disabled={tlsMode !== "mutual"}
                     value={clientKeyPath}
                     onChange={(e) => setClientKeyPath(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-800 disabled:opacity-30 text-xs rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    className="flex-1 bg-app-base border border-app-border disabled:opacity-30 text-xs rounded-md px-3 py-2 text-content-primary focus:outline-none focus:border-brand-primary font-mono"
                   />
                   <button
                     type="button"
@@ -329,7 +329,7 @@ export function SettingView({
                         "*.key;*.pem",
                       )
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-md text-xs font-medium transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-app-overlay hover:bg-content-muted/20 disabled:opacity-30 text-content-primary/90 rounded-md text-xs font-medium transition cursor-pointer"
                   >
                     <FolderOpen className="w-3.5 h-3.5" />
                     <span>Browse</span>
@@ -338,13 +338,13 @@ export function SettingView({
               </div>
 
               <div className="pt-2">
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-content-primary/90 cursor-pointer">
                   <input
                     type="checkbox"
                     disabled={tlsMode === "none"}
                     checked={skipTlsVerify}
                     onChange={(e) => setSkipTlsVerify(e.target.checked)}
-                    className="accent-indigo-500 disabled:opacity-30"
+                    className="accent-brand-primary disabled:opacity-30"
                   />
                   <span>Skip TLS Verification (Insecure / Testing)</span>
                 </label>
@@ -355,11 +355,11 @@ export function SettingView({
       </div>
 
       {/* Modal Footer */}
-      <div className="px-6 py-4 border-t border-slate-800 bg-slate-900 shrink-0 flex justify-end">
+      <div className="px-6 py-4 border-t border-app-border bg-app-surface shrink-0 flex justify-end">
         <button
           type="submit"
           form="settings-form"
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-6 py-2 rounded-md transition cursor-pointer"
+          className="flex items-center gap-2 bg-brand-primary hover:bg-brand-hover text-app-base text-xs font-medium px-6 py-2 rounded-md transition cursor-pointer"
         >
           <Save className="w-3.5 h-3.5" />
           <span>Save Changes</span>

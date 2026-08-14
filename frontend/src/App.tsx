@@ -231,7 +231,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans relative">
+    <div className="flex flex-col h-screen w-screen bg-app-base text-content-primary overflow-hidden font-sans relative">
       <HeaderBar
         environments={environments}
         activeEnvId={appConfig.activeEnvironmentId || "local"}
@@ -245,7 +245,7 @@ export default function App() {
       />
 
       {/* Main Workspace */}
-      <main className="flex-1 overflow-hidden bg-slate-950">
+      <main className="flex-1 overflow-hidden bg-app-base">
         {activeTab === "pairing" && (
           <PairingView
             devices={devices}
@@ -268,7 +268,7 @@ export default function App() {
       {/* Settings Modal Overlay */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-full flex flex-col overflow-hidden">
+          <div className="bg-app-surface border border-app-border rounded-xl shadow-2xl w-full max-w-4xl max-h-full flex flex-col overflow-hidden">
             <SettingView
               currentConfig={appConfig}
               onSaveConfig={handleSaveConfig}

@@ -1,5 +1,5 @@
-import React from "react";
-import { Settings } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Settings, Sun, Moon } from "lucide-react";
 import { config } from "../../wailsjs/go/models";
 
 export type ActiveTab = "pairing" | "transaction";
@@ -27,11 +27,45 @@ export function HeaderBar({
   onToggleConnect,
   onOpenSettings,
 }: HeaderBarProps) {
+  // Initialize theme: Check localStorage first, then fallback to OS preference
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const savedTheme = localStorage.getItem("app-theme");
+    if (savedTheme) {
+      return savedTheme === "dark";
+    }
+    // If no saved preference, check system default
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  // Apply the .dark class and save to localStorage whenever state changes
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add("dark");
+      localStorage.setItem("app-theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("app-theme", "light");
+    }
+  }, [isDarkMode]);
+
+  // Optional: Listen for OS theme changes in real-time if the user hasn't forced a preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem("app-theme")) {
+        setIsDarkMode(e.matches);
+      }
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
   return (
-    <header className="flex flex-col bg-slate-900 border-b border-slate-800 shrink-0 text-slate-100 font-sans">
+    <header className="flex flex-col bg-app-surface border-b border-app-border shrink-0 text-content-primary font-sans">
       {/* --- Row 1: Brand & Environment Picker --- */}
-      <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800/50">
-        <span className="font-bold text-base tracking-wide text-indigo-400">
+      <div className="flex items-center justify-between px-4 h-14 border-b border-app-border/50">
+        <span className="font-bold text-base tracking-wide text-brand-primary">
           POS Simulator
         </span>
 
@@ -39,7 +73,7 @@ export function HeaderBar({
           <select
             value={activeEnvId}
             onChange={(e) => onEnvironmentChange(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[200px]"
+            className="bg-app-overlay border border-app-overlay text-xs text-content-primary rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer min-w-[200px]"
           >
             {environments.map((env) => (
               <option key={env.id} value={env.id}>
@@ -48,9 +82,22 @@ export function HeaderBar({
             ))}
           </select>
 
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-1.5 text-content-muted hover:text-content-primary hover:bg-app-overlay rounded-md transition-colors cursor-pointer"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
+          </button>
+
           <button
             onClick={onOpenSettings}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+            className="p-1.5 text-content-muted hover:text-content-primary hover:bg-app-overlay rounded-md transition-colors cursor-pointer"
             title="Settings"
           >
             <Settings className="w-4 h-4" />
@@ -66,8 +113,8 @@ export function HeaderBar({
             onClick={() => onTabChange("pairing")}
             className={`px-4 h-full flex items-center text-xs font-medium rounded-t-md transition-colors cursor-pointer ${
               activeTab === "pairing"
-                ? "bg-slate-950 text-indigo-400 border-t-2 border-indigo-500"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-t-2 border-transparent"
+                ? "bg-app-base text-brand-primary border-t-2 border-brand-primary"
+                : "text-content-muted hover:text-content-primary hover:bg-app-overlay/50 border-t-2 border-transparent"
             }`}
           >
             Pairing
@@ -76,8 +123,8 @@ export function HeaderBar({
             onClick={() => onTabChange("transaction")}
             className={`px-4 h-full flex items-center text-xs font-medium rounded-t-md transition-colors cursor-pointer ${
               activeTab === "transaction"
-                ? "bg-slate-950 text-indigo-400 border-t-2 border-indigo-500"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-t-2 border-transparent"
+                ? "bg-app-base text-brand-primary border-t-2 border-brand-primary"
+                : "text-content-muted hover:text-content-primary hover:bg-app-overlay/50 border-t-2 border-transparent"
             }`}
           >
             Transaction
@@ -87,15 +134,19 @@ export function HeaderBar({
         {/* Right: Connection Controls */}
         <div className="flex items-center gap-4 h-full">
           {/* Status Indicator Pill */}
-          <div className="flex items-center gap-2 text-[11px] font-mono bg-slate-950/40 px-3.5 py-1 rounded-full border border-slate-800/80">
+          <div className="flex items-center gap-2 text-[11px] font-mono bg-app-base/40 px-3.5 py-1 rounded-full border border-app-border/80">
             <span
               className={`w-2 h-2 rounded-full ${
                 connected
-                  ? "bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.6)]"
-                  : "bg-rose-500"
+                  ? "bg-status-success animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.6)]"
+                  : "bg-status-danger"
               }`}
             />
-            <span className={connected ? "text-emerald-400" : "text-slate-500"}>
+            <span
+              className={
+                connected ? "text-status-success" : "text-content-muted/80"
+              }
+            >
               {activeHostPort || "N/A"}
             </span>
           </div>
@@ -104,8 +155,8 @@ export function HeaderBar({
             onClick={onToggleConnect}
             className={`px-4 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer ${
               connected
-                ? "bg-rose-600 hover:bg-rose-700 text-white"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                ? "bg-status-danger hover:bg-status-danger-hover text-app-base"
+                : "bg-brand-primary hover:bg-brand-hover text-app-base"
             }`}
           >
             {connected ? "Disconnect" : "Connect"}

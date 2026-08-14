@@ -1,59 +1,76 @@
-#app {
-    height: 100vh;
-    text-align: center;
+@import "tailwindcss";
+
+@theme {
+  --color-app-base: var(--bg-base);
+  --color-app-surface: var(--bg-surface);
+  --color-app-overlay: var(--bg-overlay);
+  --color-app-border: var(--border-color);
+  
+  --color-content-primary: var(--text-primary);
+  --color-content-muted: var(--text-muted);
+  
+  --color-brand-primary: var(--accent-primary);
+  --color-brand-hover: var(--accent-hover);
+  
+  --color-status-success: var(--status-success);
+  --color-status-danger: var(--status-danger);
+  --color-status-danger-hover: var(--status-danger-hover);
 }
 
-#logo {
-    display: block;
-    width: 50%;
-    height: 50%;
-    margin: auto;
-    padding: 10% 0 0;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-origin: content-box;
+@layer base {
+  /* Default to Catppuccin Latte (Light Mode) */
+  :root {
+    --bg-base: #eff1f5;       /* Base */
+    --bg-surface: #e6e9ef;    /* Mantle */
+    --bg-overlay: #ccd0da;    /* Surface0 */
+    
+    --border-color: #bcc0cc;  /* Surface1 */
+    
+    --text-primary: #4c4f69;  /* Text */
+    --text-muted: #6c6f85;    /* Subtext0 */
+    
+    --accent-primary: #1e66f5; /* Blue */
+    --accent-hover: #179299;   /* Sapphire */
+    
+    --status-success: #40a02b; /* Green */
+    --status-danger: #d20f39;  /* Red */
+    --status-danger-hover: #e64553; /* Maroon */
+  }
+
+  /* Catppuccin Mocha (Dark Mode) */
+  .dark {
+    --bg-base: #11111b;       /* Crust (Darker than base for depth) */
+    --bg-surface: #1e1e2e;    /* Base */
+    --bg-overlay: #313244;    /* Surface0 */
+    
+    --border-color: #45475a;  /* Surface1 */
+    
+    --text-primary: #cdd6f4;  /* Text */
+    --text-muted: #a6adc8;    /* Subtext0 */
+    
+    --accent-primary: #89b4fa; /* Blue */
+    --accent-hover: #b4befe;   /* Lavender */
+    
+    --status-success: #a6e3a1; /* Green */
+    --status-danger: #f38ba8;  /* Red */
+    --status-danger-hover: #eba0ac; /* Maroon */
+  }
 }
 
-.result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
-}
-
-.input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
-    cursor: pointer;
-}
-
-.input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
-}
-
-.input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
-}
-
-.input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-}
-
-.input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
+/* Global Reset & Base Setup */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  
+  transition: background-color 0.3s ease, color 0.3s ease; 
 }
