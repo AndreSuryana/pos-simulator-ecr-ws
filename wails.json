@@ -12,7 +12,7 @@
   },
   "info": {
     "productName": "POS ECR Simulator",
-    "productVersion": "2.0.0",
+    "productVersion": "2.1.0",
     "productString": "pos-ecr-simulator",
     "copyright": "Copyright © 2026 Andre Suryana",
     "comments": "A WebSocket-based POS ECR Simulator"
