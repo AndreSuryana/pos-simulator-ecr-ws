@@ -10,6 +10,9 @@ var ModePVS = Mode{
 		{ID: "voidRegular", Label: "Void (Regular)", Fields: []Field{FieldTraceNumber, FieldTransactionID}},
 		{ID: "settlement", Label: "Settlement", Fields: []Field{}},
 
+		// Report
+		{ID: "summaryReport", Label: "Summary Report", Fields: []Field{}},
+
 		// QR Generating Methods
 		{ID: "qrisAll", Label: "QRIS (All)", Fields: []Field{FieldAmount, FieldTipAmount, FieldTransactionID}},
 		{ID: "qrisBni", Label: "QRIS BNI", Fields: []Field{FieldAmount, FieldTipAmount, FieldTransactionID}},
