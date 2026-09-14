@@ -23,13 +23,13 @@ func New(
 func (t *Transaction) Send(
 	edcID string,
 	transactionType ecr.TransactionType,
-	dataField ecr.DataField,
+	dataField map[ecr.FieldKey]string,
 ) (protocol.Message[Request], error) {
 	request := Request{
 		EDCID: edcID,
 		DataTransaction: DataTransaction{
 			TransactionType: transactionType.ID,
-			DataField:       dataField,
+			DataField:       omitEmpty(dataField),
 		},
 	}
 
@@ -53,4 +53,15 @@ func (t *Transaction) Handle(data []byte) (*Response, error) {
 	}
 
 	return &message.Data, nil
+}
+
+// omitEmpty drops keys with empty values so the wire payload only
+// carries fields the user (or auto-generation) actually populated.
+func omitEmpty(data map[ecr.FieldKey]string) map[ecr.FieldKey]string {
+	for k, v := range data {
+		if v == "" {
+			delete(data, k)
+		}
+	}
+	return data
 }

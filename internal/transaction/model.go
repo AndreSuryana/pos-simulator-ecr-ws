@@ -23,8 +23,8 @@ func (r Request) Validate() error {
 
 // DataTransaction contains the transaction request.
 type DataTransaction struct {
-	TransactionType string        `json:"transactionType"`
-	DataField       ecr.DataField `json:"dataField"`
+	TransactionType string                  `json:"transactionType"`
+	DataField       map[ecr.FieldKey]string `json:"dataField"`
 }
 
 // Validate validates the transaction payload.

@@ -4,22 +4,6 @@ import { RefreshCw, Send, Sliders, FileText } from "lucide-react";
 import { Modes } from "../../wailsjs/go/main/App";
 import { ecr, edc, main } from "../../wailsjs/go/models";
 
-const TENOR_OPTIONS = [
-  { label: "3 Months", value: "3" },
-  { label: "6 Months", value: "6" },
-  { label: "9 Months", value: "9" },
-  { label: "12 Months", value: "12" },
-  { label: "18 Months", value: "18" },
-  { label: "24 Months", value: "24" },
-];
-
-const PLAN_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "Plan 1", value: "1" },
-  { label: "Plan 2", value: "2" },
-  { label: "Plan 3", value: "3" },
-];
-
 interface TransactionViewProps {
   devices?: edc.Device[];
   connected: Boolean;
@@ -40,14 +24,17 @@ export function TransactionView({
   );
   const [selectedEdc, setSelectedEdc] = useState<string>("");
 
-  const [amount, setAmount] = useState<string>("0");
-  const [tipAmount, setTipAmount] = useState<string>("0");
-  const [tenor, setTenor] = useState<string>("3");
-  const [plan, setPlan] = useState<string>("None");
-  const [traceNumber, setTraceNumber] = useState<string>("");
-  const [invoiceNumber, setInvoiceNumber] = useState<string>("");
-  const [transactionId, setTransactionId] = useState<string>("");
+  const [values, setValues] = useState<Record<string, string>>({});
   const [autoGenId, setAutoGenId] = useState<boolean>(true);
+
+  // Reset field values to defaults whenever the active type changes.
+  useEffect(() => {
+    const defaults: Record<string, string> = {};
+    (selectedType?.Fields ?? []).forEach((f) => {
+      defaults[f.Key] = f.Default ?? "";
+    });
+    setValues(defaults);
+  }, [selectedType]);
 
   useEffect(() => {
     async function loadModes() {
@@ -105,22 +92,17 @@ export function TransactionView({
     }
   };
 
-  const isFieldActive = (fieldKey: string): boolean => {
-    return selectedType?.Fields?.includes(fieldKey as any) ?? false;
-  };
-
-  const buildDataField = (): ecr.DataField => {
-    const data = new ecr.DataField();
-    if (isFieldActive("amount")) data.amount = amount;
-    if (isFieldActive("tipAmount")) data.tipAmount = tipAmount;
-    if (isFieldActive("tenor")) data.tenor = tenor;
-    if (isFieldActive("plan")) data.plan = plan === "None" ? "" : plan;
-    if (isFieldActive("traceNumber")) data.traceNumber = traceNumber;
-    if (isFieldActive("invoiceNumber")) data.invoiceNumber = invoiceNumber;
-    if (isFieldActive("transactionId") && !autoGenId)
-      data.transactionId = transactionId;
+  const buildDataField = (): Record<string, string> => {
+    const data: Record<string, string> = {};
+    (selectedType?.Fields ?? []).forEach((f) => {
+      if (f.Key === "transactionId" && autoGenId) return; // backend auto-generates
+      data[f.Key] = values[f.Key] ?? "";
+    });
     return data;
   };
+
+  const setValue = (key: string, v: string) =>
+    setValues((prev) => ({ ...prev, [key]: v }));
 
   const handleRefresh = () => {
     if (!connected) {
@@ -256,128 +238,53 @@ export function TransactionView({
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium">
-                  Amount
-                </label>
-                <input
-                  type="number"
-                  disabled={!isFieldActive("amount")}
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary transition-colors"
-                  placeholder="0"
-                />
-              </div>
+              {(selectedType?.Fields ?? []).map((field) => (
+                <div key={field.Key} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-content-muted font-medium">
+                      {field.Label}
+                    </label>
+                    {field.Key === "transactionId" && (
+                      <label className="flex items-center gap-1.5 text-xs text-content-primary/90 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={autoGenId}
+                          onChange={(e) => setAutoGenId(e.target.checked)}
+                          className="accent-brand-primary cursor-pointer"
+                        />
+                        <span>Auto-generate</span>
+                      </label>
+                    )}
+                  </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium">
-                  Tip Amount
-                </label>
-                <input
-                  type="number"
-                  disabled={!isFieldActive("tipAmount")}
-                  value={tipAmount}
-                  onChange={(e) => setTipAmount(e.target.value)}
-                  className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary transition-colors"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium">
-                  Tenor
-                </label>
-                <select
-                  disabled={!isFieldActive("tenor")}
-                  value={tenor}
-                  onChange={(e) => setTenor(e.target.value)}
-                  className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary cursor-pointer transition-colors"
-                >
-                  {TENOR_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium">
-                  Plan
-                </label>
-                <select
-                  disabled={!isFieldActive("plan")}
-                  value={plan}
-                  onChange={(e) => setPlan(e.target.value)}
-                  className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary cursor-pointer transition-colors"
-                >
-                  {PLAN_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium">
-                  Trace Number
-                </label>
-                <input
-                  type="text"
-                  disabled={!isFieldActive("traceNumber")}
-                  value={traceNumber}
-                  onChange={(e) => setTraceNumber(e.target.value)}
-                  className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary transition-colors"
-                  placeholder="e.g. 000001"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium">
-                  Invoice Number
-                </label>
-                <input
-                  type="text"
-                  disabled={!isFieldActive("invoiceNumber")}
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary transition-colors"
-                  placeholder="e.g. INV-10293"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-content-muted font-medium">
-                  Transaction ID
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-content-primary/90 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    disabled={!isFieldActive("transactionId")}
-                    checked={autoGenId}
-                    onChange={(e) => setAutoGenId(e.target.checked)}
-                    className="accent-brand-primary disabled:opacity-30 cursor-pointer"
-                  />
-                  <span>Auto-generate</span>
-                </label>
-              </div>
-
-              <input
-                type="text"
-                disabled={!isFieldActive("transactionId") || autoGenId}
-                value={autoGenId ? "(Auto-generated)" : transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-                className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary font-mono transition-colors"
-                placeholder="Enter Transaction ID"
-              />
+                  {field.Type === "select" ? (
+                    <select
+                      value={values[field.Key] ?? ""}
+                      onChange={(e) => setValue(field.Key, e.target.value)}
+                      className="bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary cursor-pointer transition-colors"
+                    >
+                      {field.Options?.map((opt) => (
+                        <option key={opt.Value} value={opt.Value}>
+                          {opt.Label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.Type === "number" ? "number" : "text"}
+                      disabled={field.Key === "transactionId" && autoGenId}
+                      value={
+                        field.Key === "transactionId" && autoGenId
+                          ? "(Auto-generated)"
+                          : (values[field.Key] ?? "")
+                      }
+                      onChange={(e) => setValue(field.Key, e.target.value)}
+                      placeholder={field.Placeholder}
+                      className="bg-app-base border border-app-border disabled:opacity-30 disabled:bg-app-surface/50 text-xs rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-primary transition-colors"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
