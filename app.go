@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	"pos-simulator-ecr-ws/internal/config"
 	"pos-simulator-ecr-ws/internal/ecr"
@@ -223,6 +226,13 @@ func (a *App) Unpair(request UnpairRequest) error {
 
 // SendTransaction sends a transaction request to an EDC.
 func (a *App) SendTransaction(request SendTransactionRequest) error {
+	if hasField(request.TransactionType, ecr.TransactionID.Key) && request.AutoGenerateTrxID {
+		if request.DataField == nil {
+			request.DataField = make(map[ecr.FieldKey]string)
+		}
+		request.DataField[ecr.TransactionID.Key] = generateTransactionId(a.Config().General.TrxIDLen)
+	}
+
 	message, err := a.transaction.Send(
 		request.EDCID,
 		request.TransactionType,
@@ -233,6 +243,39 @@ func (a *App) SendTransaction(request SendTransactionRequest) error {
 	}
 
 	return a.send(message)
+}
+
+// hasField reports whether key is among t's active fields.
+func hasField(t ecr.TransactionType, key ecr.FieldKey) bool {
+	for _, f := range t.Fields {
+		if f.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// generateTransactionId builds a transaction ID as yymmddhhmm (10 digits),
+// padded with random digits if length is longer. If length is shorter,
+// the trailing digits (minutes-first) are kept, since those change most
+// frequently.
+func generateTransactionId(length int) string {
+	if length <= 0 {
+		return ""
+	}
+
+	ts := time.Now().Format("0601021504")
+
+	if length <= len(ts) {
+		return ts[len(ts)-length:]
+	}
+
+	var sb strings.Builder
+	sb.WriteString(ts)
+	for i := len(ts); i < length; i++ {
+		sb.WriteByte(byte('0' + rand.Intn(10)))
+	}
+	return sb.String()
 }
 
 // ----------------------------------------------------------------------------

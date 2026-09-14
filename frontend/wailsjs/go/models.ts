@@ -111,34 +111,65 @@ export namespace config {
 
 export namespace ecr {
 	
-	export class DataField {
-	    amount?: string;
-	    tipAmount?: string;
-	    tenor?: string;
-	    plan?: string;
-	    transactionId?: string;
-	    traceNumber?: string;
-	    invoiceNumber?: string;
+	export class FieldOption {
+	    Label: string;
+	    Value: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new DataField(source);
+	        return new FieldOption(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.amount = source["amount"];
-	        this.tipAmount = source["tipAmount"];
-	        this.tenor = source["tenor"];
-	        this.plan = source["plan"];
-	        this.transactionId = source["transactionId"];
-	        this.traceNumber = source["traceNumber"];
-	        this.invoiceNumber = source["invoiceNumber"];
+	        this.Label = source["Label"];
+	        this.Value = source["Value"];
 	    }
 	}
+	export class Field {
+	    Key: string;
+	    Label: string;
+	    Type: string;
+	    Placeholder: string;
+	    Options: FieldOption[];
+	    Default: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Field(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Key = source["Key"];
+	        this.Label = source["Label"];
+	        this.Type = source["Type"];
+	        this.Placeholder = source["Placeholder"];
+	        this.Options = this.convertValues(source["Options"], FieldOption);
+	        this.Default = source["Default"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class TransactionType {
 	    ID: string;
 	    Label: string;
-	    Fields: string[];
+	    Fields: Field[];
 	
 	    static createFrom(source: any = {}) {
 	        return new TransactionType(source);
@@ -148,8 +179,26 @@ export namespace ecr {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
 	        this.Label = source["Label"];
-	        this.Fields = source["Fields"];
+	        this.Fields = this.convertValues(source["Fields"], Field);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class Mode {
 	    ID: string;
@@ -224,7 +273,8 @@ export namespace main {
 	export class SendTransactionRequest {
 	    edcId: string;
 	    transactionType: ecr.TransactionType;
-	    dataField: ecr.DataField;
+	    dataField: Record<string, string>;
+	    autoGenerateTrxId: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SendTransactionRequest(source);
@@ -234,7 +284,8 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.edcId = source["edcId"];
 	        this.transactionType = this.convertValues(source["transactionType"], ecr.TransactionType);
-	        this.dataField = this.convertValues(source["dataField"], ecr.DataField);
+	        this.dataField = source["dataField"];
+	        this.autoGenerateTrxId = source["autoGenerateTrxId"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
