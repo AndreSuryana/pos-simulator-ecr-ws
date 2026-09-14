@@ -274,6 +274,7 @@ export namespace main {
 	    edcId: string;
 	    transactionType: ecr.TransactionType;
 	    dataField: Record<string, string>;
+	    autoGenerateTrxId: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SendTransactionRequest(source);
@@ -284,6 +285,7 @@ export namespace main {
 	        this.edcId = source["edcId"];
 	        this.transactionType = this.convertValues(source["transactionType"], ecr.TransactionType);
 	        this.dataField = source["dataField"];
+	        this.autoGenerateTrxId = source["autoGenerateTrxId"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

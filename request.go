@@ -15,7 +15,8 @@ type UnpairRequest struct {
 
 // SendTransactionRequest is the UI request for sending a transaction.
 type SendTransactionRequest struct {
-	EDCID           string                  `json:"edcId"`
-	TransactionType ecr.TransactionType     `json:"transactionType"`
-	DataField       map[ecr.FieldKey]string `json:"dataField"`
+	EDCID             string                  `json:"edcId"`
+	TransactionType   ecr.TransactionType     `json:"transactionType"`
+	DataField         map[ecr.FieldKey]string `json:"dataField"`
+	AutoGenerateTrxID bool                    `json:"autoGenerateTrxId"`
 }

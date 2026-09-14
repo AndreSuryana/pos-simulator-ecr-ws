@@ -25,7 +25,7 @@ export function TransactionView({
   const [selectedEdc, setSelectedEdc] = useState<string>("");
 
   const [values, setValues] = useState<Record<string, string>>({});
-  const [autoGenId, setAutoGenId] = useState<boolean>(true);
+  const [autoGenId, setAutoGenId] = useState<boolean>(false);
 
   // Reset field values to defaults whenever the active type changes.
   useEffect(() => {
@@ -95,7 +95,6 @@ export function TransactionView({
   const buildDataField = (): Record<string, string> => {
     const data: Record<string, string> = {};
     (selectedType?.Fields ?? []).forEach((f) => {
-      if (f.Key === "transactionId" && autoGenId) return; // backend auto-generates
       data[f.Key] = values[f.Key] ?? "";
     });
     return data;
@@ -130,6 +129,7 @@ export function TransactionView({
       edcId: selectedEdc,
       transactionType: selectedType,
       dataField: buildDataField(),
+      autoGenerateTrxId: autoGenId,
     });
 
     if (onSendTransaction) {
