@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Trash2 } from "lucide-react";
 
 export type LogType = "sent" | "received" | "info" | "warn" | "error";
@@ -15,6 +15,10 @@ interface LogConsoleProps {
   onClear: () => void;
 }
 
+const STORAGE_KEY = "pos-simulator-log-panel-height";
+const DEFAULT_HEIGHT = 192; // 12rem / matches previous h-48
+const MIN_HEIGHT = 80;
+
 const LOG_TYPE_STYLES: Record<LogType, { icon: string; colorClass: string }> = {
   sent: { icon: "↗️", colorClass: "text-sky-400" },
   received: { icon: "↙️", colorClass: "text-status-success" },
@@ -25,17 +29,127 @@ const LOG_TYPE_STYLES: Record<LogType, { icon: string; colorClass: string }> = {
 
 export function LogConsole({ logs, onClear }: LogConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number>(0);
+  const dragStartHeight = useRef<number>(0);
 
+  const getMaxHeight = useCallback(() => {
+    // Guarantees at least 300px visible workspace for main view
+    const headroomLimit = Math.max(MIN_HEIGHT, window.innerHeight - 300);
+    const percentageLimit = Math.floor(window.innerHeight * 0.6);
+    return Math.min(headroomLimit, percentageLimit);
+  }, []);
+
+  const clampHeight = useCallback(
+    (h: number) => {
+      const maxH = getMaxHeight();
+      return Math.max(MIN_HEIGHT, Math.min(maxH, h));
+    },
+    [getMaxHeight],
+  );
+
+  const [height, setHeight] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return Math.max(MIN_HEIGHT, parsed);
+      }
+    }
+    return DEFAULT_HEIGHT;
+  });
+
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const heightRef = useRef<number>(height);
+
+  useEffect(() => {
+    heightRef.current = height;
+  }, [height]);
+
+  // Adjust height if window shrinks
+  useEffect(() => {
+    const handleResize = () => {
+      setHeight((prev) => clampHeight(prev));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [clampHeight]);
+
+  // Auto-scroll to bottom on new logs
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [logs]);
 
+  // Mouse drag handling
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStartY.current = e.clientY;
+    dragStartHeight.current = height;
+    setIsDragging(true);
+  };
+
+  const handleDoubleClick = () => {
+    const resetHeight = DEFAULT_HEIGHT;
+    setHeight(resetHeight);
+    localStorage.setItem(STORAGE_KEY, resetHeight.toString());
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = dragStartY.current - e.clientY;
+      const newHeight = clampHeight(dragStartHeight.current + deltaY);
+      setHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      localStorage.setItem(STORAGE_KEY, heightRef.current.toString());
+    };
+
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "row-resize";
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, clampHeight]);
+
   return (
-    <div className="flex flex-col h-48 bg-app-base border-t border-app-border text-xs font-mono shrink-0">
+    <div
+      style={{ height: `${height}px` }}
+      className={`relative flex flex-col bg-app-base border-t border-app-border text-xs font-mono shrink-0 ${
+        isDragging ? "select-none" : ""
+      }`}
+    >
+      {/* Top Resize Handle Bar */}
+      <div
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        className={`group absolute -top-1 left-0 right-0 h-2.5 cursor-row-resize z-20 flex items-center justify-center transition-colors ${
+          isDragging ? "bg-brand-primary/20" : "hover:bg-brand-primary/10"
+        }`}
+        title="Drag to resize, double-click to reset"
+      >
+        <div
+          className={`h-0.5 w-10 rounded-full transition-colors ${
+            isDragging
+              ? "bg-brand-primary"
+              : "bg-app-border group-hover:bg-brand-primary"
+          }`}
+        />
+      </div>
+
       {/* Console Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-app-surface/90 border-b border-app-border text-content-muted font-sans select-none">
+      <div className="flex items-center justify-between px-4 py-2 bg-app-surface/90 border-b border-app-border text-content-muted font-sans select-none shrink-0">
         <div className="flex items-center gap-3">
           <span className="font-semibold text-content-primary">
             Terminal Logs
