@@ -16,10 +16,19 @@ import {
   Pair,
   Unpair,
   SendTransaction,
+  CheckForUpdate,
+  DownloadAndInstall,
+  CancelUpdate,
+  DismissUpdate,
 } from "../wailsjs/go/main/App";
 
 import { EventsOn } from "../wailsjs/runtime/runtime";
-import { config, edc, main } from "../wailsjs/go/models";
+import { config, edc, main, updater } from "../wailsjs/go/models";
+import {
+  UpdateDialog,
+  UpdateProgress,
+  UpdateStage,
+} from "./components/UpdateDialog";
 
 const PRESET_ENVIRONMENTS: config.Environment[] = [
   new config.Environment({
@@ -47,6 +56,14 @@ export default function App() {
   );
   const [devices, setDevices] = useState<edc.Device[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  // Auto-update states
+  const [updateInfo, setUpdateInfo] = useState<updater.Info | null>(null);
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState<boolean>(false);
+  const [updateStage, setUpdateStage] = useState<UpdateStage>("idle");
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
 
   const addLog = useCallback((type: LogType, message: string) => {
     const timestamp = new Date().toLocaleTimeString("en-US", { hour12: false });
@@ -98,6 +115,24 @@ export default function App() {
           if (activeEnv) {
             setActiveHostPort(parseHostPort(activeEnv.url));
           }
+
+          // Check for software updates on launch if enabled
+          const shouldCheckOnStartup =
+            loadedConfig.update?.checkOnStartup ?? true;
+          if (shouldCheckOnStartup) {
+            try {
+              const uInfo = await CheckForUpdate();
+              if (uInfo && uInfo.available) {
+                setUpdateInfo(uInfo);
+                const dismissed = loadedConfig.update?.dismissedVersion || "";
+                if (uInfo.latestVersion !== dismissed) {
+                  setIsUpdateDialogOpen(true);
+                }
+              }
+            } catch (uErr) {
+              console.debug("Startup update check failed:", uErr);
+            }
+          }
         }
 
         const isConn = await Connected();
@@ -141,11 +176,22 @@ export default function App() {
       },
     );
 
+    const unsubscribeUpdateProgress = EventsOn(
+      "update:progress",
+      (p: UpdateProgress) => {
+        setUpdateProgress(p);
+        if (p?.stage) {
+          setUpdateStage(p.stage as UpdateStage);
+        }
+      },
+    );
+
     return () => {
       if (unsubscribeDevices) unsubscribeDevices();
       if (unsubscribeLog) unsubscribeLog();
       if (unsubscribeStatus) unsubscribeStatus();
       if (unsubscribeServerError) unsubscribeServerError();
+      if (unsubscribeUpdateProgress) unsubscribeUpdateProgress();
     };
   }, [addLog, refreshDevices]);
 
@@ -257,6 +303,79 @@ export default function App() {
     }
   };
 
+  // Manual Check For Updates (e.g. from Settings)
+  const handleManualCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const uInfo = await CheckForUpdate();
+      setUpdateInfo(uInfo);
+      if (uInfo && uInfo.available) {
+        setIsUpdateDialogOpen(true);
+        toast.success(`Update v${uInfo.latestVersion} is available!`);
+      } else {
+        toast.success("You are running the latest version.");
+      }
+    } catch (err: any) {
+      toast.error(`Failed to check for updates: ${err?.message || err}`);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  // Start Download and Install
+  const handleStartDownload = async () => {
+    if (connected) {
+      toast.error("Please disconnect the WebSocket before updating.");
+      return;
+    }
+
+    setUpdateStage("downloading");
+    setUpdateError(null);
+    try {
+      await DownloadAndInstall();
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      setUpdateStage("error");
+      setUpdateError(msg);
+      toast.error(`Update failed: ${msg}`);
+    }
+  };
+
+  // Cancel in-flight download
+  const handleCancelUpdate = async () => {
+    try {
+      await CancelUpdate();
+      setUpdateStage("idle");
+      setUpdateProgress(null);
+      toast("Update cancelled.");
+    } catch (err: any) {
+      console.error("Cancel update error:", err);
+    }
+  };
+
+  // Dismiss update dialog for current version
+  const handleDismissUpdate = async () => {
+    setIsUpdateDialogOpen(false);
+    if (updateInfo?.latestVersion) {
+      try {
+        await DismissUpdate(updateInfo.latestVersion);
+        setAppConfig(
+          (prev) =>
+            new config.Config({
+              ...prev,
+              update: new config.Update({
+                checkOnStartup: prev.update?.checkOnStartup ?? true,
+                dismissedVersion: updateInfo.latestVersion,
+              }),
+            }),
+        );
+      } catch (err) {
+        console.error("Failed to persist update dismissal:", err);
+      }
+    }
+  };
+
+
   return (
     <div className="flex flex-col h-screen w-screen bg-app-base text-content-primary overflow-hidden font-sans relative">
       <HeaderBar
@@ -269,6 +388,8 @@ export default function App() {
         activeHostPort={activeHostPort}
         onToggleConnect={handleToggleConnect}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        updateInfo={updateInfo}
+        onOpenUpdate={() => setIsUpdateDialogOpen(true)}
       />
 
       {/* Main Workspace */}
@@ -302,9 +423,25 @@ export default function App() {
               currentConfig={appConfig}
               onSaveConfig={handleSaveConfig}
               onClose={() => setIsSettingsOpen(false)}
+              onManualCheckUpdate={handleManualCheckUpdate}
+              isCheckingUpdate={isCheckingUpdate}
             />
           </div>
         </div>
+      )}
+
+      {/* Update Dialog Overlay */}
+      {isUpdateDialogOpen && updateInfo && (
+        <UpdateDialog
+          info={updateInfo}
+          stage={updateStage}
+          progress={updateProgress}
+          errorMessage={updateError}
+          connected={connected}
+          onDownload={handleStartDownload}
+          onCancel={handleCancelUpdate}
+          onClose={handleDismissUpdate}
+        />
       )}
 
       <Toaster

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Save, Shield, Key, Sliders, FolderOpen, X } from "lucide-react";
+import { Save, Shield, Key, Sliders, FolderOpen, X, RefreshCw, Sparkles } from "lucide-react";
 import { config } from "../../wailsjs/go/models";
 import { OpenFileBrowser } from "../../wailsjs/go/main/App";
 
@@ -7,12 +7,16 @@ interface SettingViewProps {
   currentConfig?: config.Config;
   onSaveConfig?: (cfg: config.Config) => Promise<void>;
   onClose?: () => void;
+  onManualCheckUpdate?: () => Promise<void>;
+  isCheckingUpdate?: boolean;
 }
 
 export function SettingView({
   currentConfig,
   onSaveConfig,
   onClose,
+  onManualCheckUpdate,
+  isCheckingUpdate = false,
 }: SettingViewProps) {
   const [posId, setPosId] = useState<string>("");
   const [mid, setMid] = useState<string>("");
@@ -27,6 +31,8 @@ export function SettingView({
   const [clientKeyPath, setClientKeyPath] = useState<string>("");
   const [skipTlsVerify, setSkipTlsVerify] = useState<boolean>(false);
 
+  const [checkOnStartup, setCheckOnStartup] = useState<boolean>(true);
+
   useEffect(() => {
     if (currentConfig) {
       setPosId(currentConfig.general?.posId || "");
@@ -35,6 +41,8 @@ export function SettingView({
 
       setApiKey(currentConfig.auth?.apiKey || "");
       setPrivateKey(currentConfig.auth?.privateKey || "");
+
+      setCheckOnStartup(currentConfig.update?.checkOnStartup ?? true);
 
       const tls = currentConfig.tls;
       if (tls) {
@@ -105,6 +113,10 @@ export function SettingView({
         clientCertPath: clientCertPath,
         clientKeyPath: clientKeyPath,
         skipVerify: skipTlsVerify,
+      }),
+      update: new config.Update({
+        checkOnStartup,
+        dismissedVersion: currentConfig?.update?.dismissedVersion || "",
       }),
     });
 
@@ -351,14 +363,49 @@ export function SettingView({
               </div>
             </div>
           </div>
+
+          {/* 4. Software Updates Card */}
+          <div className="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col gap-3">
+            <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Software Updates</span>
+            </h2>
+            <div>
+              <label className="flex items-center gap-2 text-xs text-content-primary/90 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checkOnStartup}
+                  onChange={(e) => setCheckOnStartup(e.target.checked)}
+                  className="accent-brand-primary"
+                />
+                <span>Automatically check for updates on startup</span>
+              </label>
+            </div>
+          </div>
         </form>
       </div>
 
       {/* Modal Footer */}
       <div className="px-4 py-3 border-t border-app-border bg-app-surface shrink-0 flex justify-between items-center">
-        <span className="text-[11px] text-content-muted/60 font-mono select-none">
-          v{import.meta.env.VITE_APP_VERSION || "0.0.0-dev"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-content-muted/60 font-mono select-none">
+            v{import.meta.env.VITE_APP_VERSION || "0.0.0-dev"}
+          </span>
+
+          {onManualCheckUpdate && (
+            <button
+              type="button"
+              disabled={isCheckingUpdate}
+              onClick={onManualCheckUpdate}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-app-overlay hover:bg-content-muted/20 disabled:opacity-50 text-content-primary/90 rounded text-xs transition cursor-pointer"
+            >
+              <RefreshCw
+                className={`w-3 h-3 ${isCheckingUpdate ? "animate-spin text-brand-primary" : ""}`}
+              />
+              <span>{isCheckingUpdate ? "Checking..." : "Check for Updates"}</span>
+            </button>
+          )}
+        </div>
 
         <button
           type="submit"

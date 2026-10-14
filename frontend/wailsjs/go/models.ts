@@ -14,6 +14,20 @@ export namespace config {
 	        this.privateKey = source["privateKey"];
 	    }
 	}
+	export class Update {
+	    checkOnStartup: boolean;
+	    dismissedVersion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Update(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.checkOnStartup = source["checkOnStartup"];
+	        this.dismissedVersion = source["dismissedVersion"];
+	    }
+	}
 	export class TLS {
 	    enabled: boolean;
 	    clientCertPath: string;
@@ -72,6 +86,7 @@ export namespace config {
 	    activeEnvironmentId: string;
 	    auth: Auth;
 	    tls: TLS;
+	    update: Update;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -84,6 +99,7 @@ export namespace config {
 	        this.activeEnvironmentId = source["activeEnvironmentId"];
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.tls = this.convertValues(source["tls"], TLS);
+	        this.update = this.convertValues(source["update"], Update);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -104,6 +120,7 @@ export namespace config {
 		    return a;
 		}
 	}
+	
 	
 	
 
@@ -316,6 +333,41 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.edcId = source["edcId"];
+	    }
+	}
+
+}
+
+export namespace updater {
+	
+	export class Info {
+	    available: boolean;
+	    currentVersion: string;
+	    latestVersion: string;
+	    name: string;
+	    changelog: string;
+	    releaseUrl: string;
+	    downloadUrl: string;
+	    publishedAt: string;
+	    size: number;
+	    sha256: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Info(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.name = source["name"];
+	        this.changelog = source["changelog"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.publishedAt = source["publishedAt"];
+	        this.size = source["size"];
+	        this.sha256 = source["sha256"];
 	    }
 	}
 

@@ -37,6 +37,12 @@ type TLS struct {
 	SkipVerify       bool   `json:"skipVerify"`
 }
 
+// Update holds auto-update preferences.
+type Update struct {
+	CheckOnStartup   bool   `json:"checkOnStartup"`
+	DismissedVersion string `json:"dismissedVersion"`
+}
+
 // Config represents the application's persistent configuration.
 //
 // All fields are automatically persisted whenever updated.
@@ -55,6 +61,8 @@ type Config struct {
 
 	Auth Auth `json:"auth"`
 	TLS  TLS  `json:"tls"`
+
+	Update Update `json:"update"`
 }
 
 // DefaultEnvironments returns the built-in preset environments. These are
@@ -180,5 +188,8 @@ func Default() Config {
 			TrxIDLen: 14,
 		},
 		ActiveEnvironmentID: presets[0].ID,
+		Update: Update{
+			CheckOnStartup: true,
+		},
 	}
 }
