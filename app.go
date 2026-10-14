@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"pos-simulator-ecr-ws/internal/config"
@@ -16,6 +19,7 @@ import (
 	"pos-simulator-ecr-ws/internal/protocol"
 	"pos-simulator-ecr-ws/internal/register"
 	"pos-simulator-ecr-ws/internal/transaction"
+	"pos-simulator-ecr-ws/internal/updater"
 	"pos-simulator-ecr-ws/internal/websocket"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -23,7 +27,8 @@ import (
 
 // App is the Wails application.
 type App struct {
-	ctx context.Context
+	ctx     context.Context
+	version string
 
 	config *config.Manager
 	logger *logger.Logger
@@ -35,16 +40,20 @@ type App struct {
 	register    *register.Register
 	devices     *edc.Devices
 	transaction *transaction.Transaction
+
+	updateCancel context.CancelFunc
+	updateMu     sync.Mutex
 }
 
 // NewApp creates a new application.
-func NewApp() (*App, error) {
+func NewApp(version string) (*App, error) {
 	cfg, err := config.New()
 	if err != nil {
 		return nil, err
 	}
 
 	app := &App{
+		version:   version,
 		config:    cfg,
 		logger:    logger.New(),
 		websocket: websocket.New(),
@@ -106,6 +115,7 @@ func (a *App) Config() config.Config {
 // Changes are automatically persisted by the configuration manager.
 func (a *App) UpdateConfig(cfg config.Config) error {
 	a.config.Update(func(current *config.Config) {
+		cfg.Update = current.Update
 		*current = cfg
 	})
 
@@ -118,6 +128,153 @@ func (a *App) Modes() []ecr.Mode {
 		ecr.ModePVS,
 		ecr.ModeBRI,
 	}
+}
+
+// ----------------------------------------------------------------------------
+// Updater
+// ----------------------------------------------------------------------------
+
+// AppVersion returns the embedded application version.
+func (a *App) AppVersion() string {
+	return a.version
+}
+
+// CheckForUpdate checks for a newer version on GitHub Releases.
+func (a *App) CheckForUpdate() (*updater.Info, error) {
+	return updater.Check(a.ctx, "", a.version)
+}
+
+// DismissUpdate records a version as dismissed by the user.
+func (a *App) DismissUpdate(version string) error {
+	a.config.Update(func(current *config.Config) {
+		current.Update.DismissedVersion = version
+	})
+	return nil
+}
+
+// SetCheckOnStartup toggles update check on startup.
+func (a *App) SetCheckOnStartup(enabled bool) error {
+	a.config.Update(func(current *config.Config) {
+		current.Update.CheckOnStartup = enabled
+	})
+	return nil
+}
+
+// OpenURL opens an allowed URL in the default browser.
+func (a *App) OpenURL(targetURL string) error {
+	if !strings.HasPrefix(targetURL, updater.AllowedDownloadURLPrefix) {
+		return fmt.Errorf("untrusted URL: %s", targetURL)
+	}
+	runtime.BrowserOpenURL(a.ctx, targetURL)
+	return nil
+}
+
+// CancelUpdate cancels an active update download.
+func (a *App) CancelUpdate() {
+	a.updateMu.Lock()
+	defer a.updateMu.Unlock()
+	if a.updateCancel != nil {
+		a.updateCancel()
+		a.updateCancel = nil
+	}
+}
+
+// DownloadAndInstall performs in-app self update: download, verify, swap, and relaunch.
+func (a *App) DownloadAndInstall() error {
+	if a.Connected() {
+		return errors.New("cannot update while WebSocket is connected; please disconnect first")
+	}
+
+	env := runtime.Environment(a.ctx)
+	if env.BuildType == "dev" {
+		return errors.New("self-update is disabled in development mode")
+	}
+
+	info, err := updater.Check(a.ctx, "", a.version)
+	if err != nil {
+		return fmt.Errorf("check update: %w", err)
+	}
+	if !info.Available {
+		return errors.New("no update available")
+	}
+
+	currentExePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve current executable: %w", err)
+	}
+	currentExePath, err = filepath.EvalSymlinks(currentExePath)
+	if err != nil {
+		return fmt.Errorf("eval symlinks: %w", err)
+	}
+
+	exeDir := filepath.Dir(currentExePath)
+
+	if err := updater.CheckWritePermission(exeDir); err != nil {
+		return fmt.Errorf("write permission denied in %s: %w", exeDir, err)
+	}
+
+	updateCtx, cancel := context.WithCancel(context.Background())
+	a.updateMu.Lock()
+	a.updateCancel = cancel
+	a.updateMu.Unlock()
+
+	defer a.CancelUpdate()
+
+	tempZip := filepath.Join(exeDir, fmt.Sprintf(".update_%d.zip", time.Now().UnixNano()))
+	defer os.Remove(tempZip)
+
+	emitProgress := func(stage string, done, total int64) {
+		percent := 0.0
+		if total > 0 {
+			percent = float64(done) / float64(total) * 100.0
+		}
+		runtime.EventsEmit(a.ctx, "update:progress", updater.Progress{
+			Stage:      stage,
+			BytesDone:  done,
+			TotalBytes: total,
+			Percent:    percent,
+		})
+	}
+
+	emitProgress("downloading", 0, info.Size)
+
+	err = updater.Download(updateCtx, info.DownloadURL, tempZip, func(done, total int64) {
+		emitProgress("downloading", done, total)
+	})
+	if err != nil {
+		return fmt.Errorf("download update: %w", err)
+	}
+
+	emitProgress("verifying", info.Size, info.Size)
+	if err := updater.VerifySHA256(tempZip, info.SHA256); err != nil {
+		return fmt.Errorf("verify checksum: %w", err)
+	}
+
+	emitProgress("extracting", info.Size, info.Size)
+	newExePath := currentExePath + ".new"
+	defer os.Remove(newExePath)
+
+	if err := updater.ExtractExecutableFromZip(tempZip, newExePath); err != nil {
+		return fmt.Errorf("extract executable: %w", err)
+	}
+
+	emitProgress("installing", info.Size, info.Size)
+	if err := updater.SwapExecutable(currentExePath, newExePath); err != nil {
+		return fmt.Errorf("swap executable: %w", err)
+	}
+
+	emitProgress("restarting", info.Size, info.Size)
+	oldPID := os.Getpid()
+	if err := updater.Relaunch(currentExePath, oldPID); err != nil {
+		return fmt.Errorf("relaunch updated application: %w", err)
+	}
+
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		runtime.Quit(a.ctx)
+	}()
+
+	return nil
 }
 
 // ----------------------------------------------------------------------------

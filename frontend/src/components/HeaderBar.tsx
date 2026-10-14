@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Sun, Moon } from "lucide-react";
-import { config } from "../../wailsjs/go/models";
+import { Settings, Sun, Moon, Sparkles } from "lucide-react";
+import { config, updater } from "../../wailsjs/go/models";
 
 export type ActiveTab = "pairing" | "transaction";
 
@@ -14,6 +14,8 @@ interface HeaderBarProps {
   activeHostPort: string;
   onToggleConnect: () => void;
   onOpenSettings: () => void;
+  updateInfo?: updater.Info | null;
+  onOpenUpdate?: () => void;
 }
 
 export function HeaderBar({
@@ -26,6 +28,8 @@ export function HeaderBar({
   activeHostPort,
   onToggleConnect,
   onOpenSettings,
+  updateInfo,
+  onOpenUpdate,
 }: HeaderBarProps) {
   // Initialize theme: Check localStorage first, then fallback to OS preference
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -65,9 +69,23 @@ export function HeaderBar({
     <header className="flex flex-col bg-app-surface border-b border-app-border shrink-0 text-content-primary font-sans">
       {/* --- Row 1: Brand & Environment Picker --- */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-app-border/50">
-        <span className="font-bold text-base tracking-wide text-brand-primary">
-          POS Simulator
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-base tracking-wide text-brand-primary">
+            POS Simulator
+          </span>
+
+          {updateInfo?.available && (
+            <button
+              type="button"
+              onClick={onOpenUpdate}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-primary/15 text-brand-primary border border-brand-primary/30 hover:bg-brand-primary/25 transition cursor-pointer"
+              title={`A new update v${updateInfo.latestVersion} is available. Click to view.`}
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Update v{updateInfo.latestVersion}</span>
+            </button>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <select
@@ -97,10 +115,13 @@ export function HeaderBar({
 
           <button
             onClick={onOpenSettings}
-            className="p-1.5 text-content-muted hover:text-content-primary hover:bg-app-overlay rounded-md transition-colors cursor-pointer"
+            className="relative p-1.5 text-content-muted hover:text-content-primary hover:bg-app-overlay rounded-md transition-colors cursor-pointer"
             title="Settings"
           >
             <Settings className="w-4 h-4" />
+            {updateInfo?.available && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-brand-primary ring-2 ring-app-surface" />
+            )}
           </button>
         </div>
       </div>

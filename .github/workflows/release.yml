@@ -9,6 +9,19 @@ permissions:
   contents: write
 
 jobs:
+  commitlint:
+    name: Commit Lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Conventional Commits
+        uses: wagoid/commitlint-github-action@v6
+
   build:
     name: Build (Windows)
     runs-on: windows-latest
@@ -35,6 +48,15 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Build Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run Go Tests
+        run: go test -v ./internal/...
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
@@ -60,6 +82,14 @@ jobs:
             exit 1
           fi
 
+      - name: Generate Changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --unreleased --tag v${{ steps.app_version.outputs.version }} --strip header
+        env:
+          OUTPUT: build/bin/CHANGELOG_RELEASE.md
+
       - name: Build Application
         run: wails build -clean -m -platform windows/amd64
 
@@ -67,7 +97,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pos-simulator-windows-v${{ steps.app_version.outputs.version }}
-          path: build/bin/*.exe
+          path: |
+            build/bin/*.exe
+            build/bin/CHANGELOG_RELEASE.md
           retention-days: 7
 
   release:
@@ -90,7 +122,7 @@ jobs:
           filename: pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
           directory: release
           path: .
-          exclusions: "*.zip"
+          exclusions: "*.zip CHANGELOG_RELEASE.md"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -98,6 +130,6 @@ jobs:
           tag_name: v${{ needs.build.outputs.version }}
           target_commitish: main
           files: release/pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
-          generate_release_notes: true
+          body_path: release/CHANGELOG_RELEASE.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
