@@ -633,10 +633,12 @@ func (a *App) handleTransaction(data []byte) error {
 // handlerError parses an ERROR message from server.
 func (a *App) handleError(data []byte) error {
 	var errResp struct {
-		Status int `json:"status"`
-		Data   struct {
-			ReasonCode int    `json:"reason_code"`
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+		Data    struct {
+			ReasonCode any    `json:"reason_code"`
 			Reason     string `json:"reason"`
+			Message    string `json:"message"`
 		} `json:"data"`
 	}
 
@@ -647,12 +649,19 @@ func (a *App) handleError(data []byte) error {
 
 	baseMsg := errResp.Data.Reason
 	if baseMsg == "" {
-		baseMsg = "An unknown server error occurred"
+		baseMsg = errResp.Data.Message
+	}
+	if baseMsg == "" {
+		baseMsg = errResp.Message
+	}
+	if baseMsg == "" {
+		baseMsg = "Unknown error"
 	}
 
 	var finalMsg string
-	if errResp.Data.ReasonCode != 0 {
-		finalMsg = fmt.Sprintf("%s (Code: %d)", baseMsg, errResp.Data.ReasonCode)
+	codeStr := fmt.Sprintf("%v", errResp.Data.ReasonCode)
+	if errResp.Data.ReasonCode != nil && codeStr != "0" && codeStr != "" && codeStr != "<nil>" {
+		finalMsg = fmt.Sprintf("%s (Code: %v)", baseMsg, errResp.Data.ReasonCode)
 	} else if errResp.Status != 0 {
 		finalMsg = fmt.Sprintf("%s (Status: %d)", baseMsg, errResp.Status)
 	} else {

@@ -8,6 +8,7 @@ import { SettingView } from "./components/SettingView";
 import { UpdateDialog } from "./components/UpdateDialog";
 
 import { Config, UpdateConfig } from "../wailsjs/go/main/App";
+import { EventsOn } from "../wailsjs/runtime/runtime";
 import { config } from "../wailsjs/go/models";
 
 import { useLogs } from "./hooks/useLogs";
@@ -55,6 +56,18 @@ export default function App() {
       .catch((err) => {
         addLog("error", `Failed to load config: ${err?.message || err}`);
       });
+  }, [addLog]);
+
+  // Listen for server error events
+  useEffect(() => {
+    const cancelErrorEvent = EventsOn("server:error", (errMsg: string) => {
+      toast.error(errMsg);
+      addLog("error", errMsg);
+    });
+
+    return () => {
+      if (cancelErrorEvent) cancelErrorEvent();
+    };
   }, [addLog]);
 
   const handleSaveConfig = async (newCfg: config.Config) => {

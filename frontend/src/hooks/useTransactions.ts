@@ -36,8 +36,7 @@ export function useTransactions(
       try {
         const txName = req.transactionType?.Label || req.transactionType?.ID || "Transaction";
         await SendTransaction(req);
-        onLog("sent", `Sent ${txName} to ${req.edcId}`);
-        toast.success(`Transaction ${txName} sent`);
+        toast(`Transaction ${txName} sent`, { icon: "ℹ️" });
       } catch (err: any) {
         const errMsg = err?.message || err;
         onLog("error", `Transaction failed: ${errMsg}`);
