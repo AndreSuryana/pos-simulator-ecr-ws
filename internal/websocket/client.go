@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -24,9 +23,7 @@ var (
 )
 
 const (
-	closeGraceTimeout     = 2 * time.Second
-	initialReconnectDelay = 2 * time.Second
-	defaultMaxDelay       = 30 * time.Second
+	closeGraceTimeout = 2 * time.Second
 )
 
 // Client manages a single WebSocket connection.
@@ -57,52 +54,11 @@ type Client struct {
 
 	// OnMessage is called for each received text/binary message.
 	OnMessage func([]byte)
-
-	// OnReconnectAttempt is called before each auto-reconnect retry delay.
-	OnReconnectAttempt func(attempt int, maxTries int, delay time.Duration)
-
-	// OnReconnectFailed is called when auto-reconnect reaches max attempts without success.
-	OnReconnectFailed func()
-
-	// Resilience configuration
-	cfgMu             sync.RWMutex
-	autoReconnect     bool
-	maxReconnectDelay time.Duration
-	maxReconnectTries int
-
-	// Target memory for auto-reconnect
-	targetMu sync.RWMutex
-	lastURL  string
-	lastTLS  *tls.Config
-
-	// Goroutine cancellation
-	reconnectCancel context.CancelFunc
-	isReconnecting  bool
 }
 
-// New creates a new WebSocket client with default resilience options.
+// New creates a new WebSocket client.
 func New() *Client {
-	return &Client{
-		autoReconnect:     true,
-		maxReconnectDelay: defaultMaxDelay,
-		maxReconnectTries: 0,
-	}
-}
-
-// SetConnectionConfig updates the auto-reconnect behavior.
-func (c *Client) SetConnectionConfig(autoReconnect bool, maxDelaySec int, maxTries int) {
-	c.cfgMu.Lock()
-	defer c.cfgMu.Unlock()
-
-	c.autoReconnect = autoReconnect
-
-	if maxDelaySec <= 0 {
-		c.maxReconnectDelay = defaultMaxDelay
-	} else {
-		c.maxReconnectDelay = time.Duration(maxDelaySec) * time.Second
-	}
-
-	c.maxReconnectTries = maxTries
+	return &Client{}
 }
 
 // Connected reports whether the client is currently connected.
@@ -122,24 +78,8 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 		c.connMu.Unlock()
 		return ErrAlreadyConnected
 	}
-
-	// Cancel any active reconnect loop since user/system initiated Connect
-	if c.reconnectCancel != nil {
-		c.reconnectCancel()
-		c.reconnectCancel = nil
-	}
 	c.connMu.Unlock()
 
-	// Remember target for potential auto-reconnect
-	c.targetMu.Lock()
-	c.lastURL = url
-	c.lastTLS = tlsConfig
-	c.targetMu.Unlock()
-
-	return c.dial(ctx, url, tlsConfig)
-}
-
-func (c *Client) dial(ctx context.Context, url string, tlsConfig *tls.Config) error {
 	dialer := websocket.Dialer{TLSClientConfig: tlsConfig}
 
 	conn, _, err := dialer.DialContext(ctx, url, http.Header{})
@@ -167,11 +107,6 @@ func (c *Client) dial(ctx context.Context, url string, tlsConfig *tls.Config) er
 // a read error is concurrently tearing down the same connection.
 func (c *Client) Disconnect() error {
 	c.connMu.Lock()
-	// Cancel any active reconnect attempts
-	if c.reconnectCancel != nil {
-		c.reconnectCancel()
-		c.reconnectCancel = nil
-	}
 	conn := c.conn
 	c.connMu.Unlock()
 
@@ -213,7 +148,7 @@ func (c *Client) Send(data []byte) error {
 
 // readLoop reads messages until the connection errors or is closed
 // elsewhere. conn is captured at goroutine start so a later Connect()
-// (reconnect) can never be torn down by a stale readLoop.
+// can never be torn down by a stale readLoop.
 func (c *Client) readLoop(conn *websocket.Conn) {
 	for {
 		_, message, err := conn.ReadMessage()
@@ -252,97 +187,5 @@ func (c *Client) finish(conn *websocket.Conn, err error) {
 		if c.OnDisconnect != nil {
 			c.OnDisconnect(err)
 		}
-
-		if err != nil {
-			c.triggerAutoReconnect()
-		}
 	})
-}
-
-func (c *Client) triggerAutoReconnect() {
-	c.cfgMu.RLock()
-	enabled := c.autoReconnect
-	maxDelay := c.maxReconnectDelay
-	maxTries := c.maxReconnectTries
-	c.cfgMu.RUnlock()
-
-	if !enabled {
-		return
-	}
-
-	c.targetMu.RLock()
-	targetURL := c.lastURL
-	tlsCfg := c.lastTLS
-	c.targetMu.RUnlock()
-
-	if targetURL == "" {
-		return
-	}
-
-	c.connMu.Lock()
-	if c.isReconnecting {
-		c.connMu.Unlock()
-		return
-	}
-	c.isReconnecting = true
-	ctx, cancel := context.WithCancel(context.Background())
-	c.reconnectCancel = cancel
-	c.connMu.Unlock()
-
-	go func() {
-		defer func() {
-			c.connMu.Lock()
-			c.isReconnecting = false
-			c.reconnectCancel = nil
-			c.connMu.Unlock()
-		}()
-
-		delay := initialReconnectDelay
-		attempt := 1
-
-		for {
-			if maxTries > 0 && attempt > maxTries {
-				slog.Debug("auto-reconnect reached max attempts", "maxTries", maxTries)
-				if c.OnReconnectFailed != nil {
-					c.OnReconnectFailed()
-				}
-				return
-			}
-
-			slog.Debug("waiting to auto-reconnect", "attempt", attempt, "delay", delay)
-			if c.OnReconnectAttempt != nil {
-				c.OnReconnectAttempt(attempt, maxTries, delay)
-			}
-
-			select {
-			case <-ctx.Done():
-				slog.Debug("auto-reconnect cancelled")
-				return
-			case <-time.After(delay):
-			}
-
-			// Check if already connected by another call
-			if c.Connected() {
-				return
-			}
-
-			slog.Debug("attempting auto-reconnect", "attempt", attempt, "url", targetURL)
-			dialCtx, dialCancel := context.WithTimeout(ctx, 10*time.Second)
-			err := c.dial(dialCtx, targetURL, tlsCfg)
-			dialCancel()
-
-			if err == nil {
-				slog.Debug("auto-reconnect succeeded", "attempt", attempt)
-				return
-			}
-
-			slog.Debug("auto-reconnect attempt failed", "attempt", attempt, "error", err)
-
-			attempt++
-			delay *= 2
-			if delay > maxDelay {
-				delay = maxDelay
-			}
-		}
-	}()
 }

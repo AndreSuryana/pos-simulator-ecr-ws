@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Save, Radio, Key, Sliders, FolderOpen, X, RefreshCw, Sparkles } from "lucide-react";
+import { Save, Shield, Key, Sliders, FolderOpen, X, RefreshCw, Sparkles } from "lucide-react";
 import { config } from "../../wailsjs/go/models";
 import { OpenFileBrowser } from "../../wailsjs/go/main/App";
 
@@ -25,10 +25,6 @@ export function SettingView({
   const [apiKey, setApiKey] = useState<string>("");
   const [privateKey, setPrivateKey] = useState<string>("");
 
-  const [autoReconnect, setAutoReconnect] = useState<boolean>(true);
-  const [maxReconnectDelaySeconds, setMaxReconnectDelaySeconds] = useState<number>(30);
-  const [maxReconnectTries, setMaxReconnectTries] = useState<number>(0);
-
   const [tlsMode, setTlsMode] = useState<"none" | "one-way" | "mutual">("none");
   const [caCertPath, setCaCertPath] = useState<string>("");
   const [clientCertPath, setClientCertPath] = useState<string>("");
@@ -47,13 +43,6 @@ export function SettingView({
       setPrivateKey(currentConfig.auth?.privateKey || "");
 
       setCheckOnStartup(currentConfig.update?.checkOnStartup ?? true);
-
-      const conn = currentConfig.connection;
-      if (conn) {
-        setAutoReconnect(conn.autoReconnect ?? true);
-        setMaxReconnectDelaySeconds(conn.maxReconnectDelaySeconds || 30);
-        setMaxReconnectTries(conn.maxReconnectTries ?? 0);
-      }
 
       const tls = currentConfig.tls;
       if (tls) {
@@ -128,11 +117,6 @@ export function SettingView({
       update: new config.Update({
         checkOnStartup,
         dismissedVersion: currentConfig?.update?.dismissedVersion || "",
-      }),
-      connection: new config.Connection({
-        autoReconnect,
-        maxReconnectDelaySeconds: Number(maxReconnectDelaySeconds) || 30,
-        maxReconnectTries: Number(maxReconnectTries) || 0,
       }),
     });
 
@@ -246,11 +230,11 @@ export function SettingView({
             </div>
           </div>
 
-          {/* 3. Connection Card */}
-          <div className="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col gap-4">
+          {/* 3. TLS Configuration Card */}
+          <div className="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col gap-3">
             <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-1.5">
-              <Radio className="w-3.5 h-3.5" />
-              <span>Connection</span>
+              <Shield className="w-3.5 h-3.5" />
+              <span>TLS Configuration</span>
             </h2>
 
             <div className="flex flex-col gap-1">
@@ -377,62 +361,6 @@ export function SettingView({
                   />
                   <span>Skip TLS Verification (Insecure / Testing)</span>
                 </label>
-              </div>
-
-              {/* Auto-Reconnect Settings */}
-              <div className="border-t border-app-border pt-3 mt-3 flex flex-col gap-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-content-primary select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoReconnect}
-                    onChange={(e) => setAutoReconnect(e.target.checked)}
-                    className="rounded border-app-border text-brand-primary focus:ring-brand-primary cursor-pointer"
-                  />
-                  <span className="font-medium">Auto-Reconnect</span>
-                </label>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
-                  <div className="flex flex-col gap-1">
-                    <label
-                      className={`text-[11px] font-medium transition-colors ${
-                        autoReconnect ? "text-content-muted" : "text-content-muted/50"
-                      }`}
-                    >
-                      Max Reconnect Delay (seconds)
-                    </label>
-                    <input
-                      type="number"
-                      min={2}
-                      max={300}
-                      disabled={!autoReconnect}
-                      value={maxReconnectDelaySeconds}
-                      onChange={(e) =>
-                        setMaxReconnectDelaySeconds(Number(e.target.value))
-                      }
-                      className="bg-app-base border border-app-border disabled:opacity-40 disabled:cursor-not-allowed text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label
-                      className={`text-[11px] font-medium transition-colors ${
-                        autoReconnect ? "text-content-muted" : "text-content-muted/50"
-                      }`}
-                    >
-                      Max Attempts (0 for infinite)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      disabled={!autoReconnect}
-                      value={maxReconnectTries}
-                      onChange={(e) =>
-                        setMaxReconnectTries(Number(e.target.value))
-                      }
-                      className="bg-app-base border border-app-border disabled:opacity-40 disabled:cursor-not-allowed text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </div>

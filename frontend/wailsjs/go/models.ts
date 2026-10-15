@@ -14,22 +14,6 @@ export namespace config {
 	        this.privateKey = source["privateKey"];
 	    }
 	}
-	export class Connection {
-	    autoReconnect: boolean;
-	    maxReconnectDelaySeconds: number;
-	    maxReconnectTries: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Connection(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.autoReconnect = source["autoReconnect"];
-	        this.maxReconnectDelaySeconds = source["maxReconnectDelaySeconds"];
-	        this.maxReconnectTries = source["maxReconnectTries"];
-	    }
-	}
 	export class Update {
 	    checkOnStartup: boolean;
 	    dismissedVersion: string;
@@ -103,7 +87,6 @@ export namespace config {
 	    auth: Auth;
 	    tls: TLS;
 	    update: Update;
-	    connection: Connection;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -117,7 +100,6 @@ export namespace config {
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.tls = this.convertValues(source["tls"], TLS);
 	        this.update = this.convertValues(source["update"], Update);
-	        this.connection = this.convertValues(source["connection"], Connection);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -138,7 +120,6 @@ export namespace config {
 		    return a;
 		}
 	}
-	
 	
 	
 	

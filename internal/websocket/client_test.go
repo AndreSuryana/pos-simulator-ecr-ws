@@ -5,37 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
-
-func TestClient_ConnectionConfig(t *testing.T) {
-	c := New()
-	if !c.autoReconnect {
-		t.Errorf("expected default autoReconnect to be true")
-	}
-
-	c.SetConnectionConfig(false, 45, 3)
-
-	c.cfgMu.RLock()
-	autoReconn := c.autoReconnect
-	maxDelay := c.maxReconnectDelay
-	maxTries := c.maxReconnectTries
-	c.cfgMu.RUnlock()
-
-	if autoReconn != false {
-		t.Errorf("expected autoReconnect false, got %v", autoReconn)
-	}
-	if maxDelay != 45*time.Second {
-		t.Errorf("expected maxReconnectDelay 45s, got %v", maxDelay)
-	}
-	if maxTries != 3 {
-		t.Errorf("expected maxReconnectTries 3, got %v", maxTries)
-	}
-}
 
 func TestClient_NotConnected(t *testing.T) {
 	c := New()
@@ -81,7 +55,6 @@ func TestClient_ConnectAndEcho(t *testing.T) {
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	c := New()
-	c.SetConnectionConfig(false, 5, 1)
 
 	connectedCh := make(chan struct{}, 1)
 	c.OnConnect = func() {
@@ -133,88 +106,4 @@ func TestClient_ConnectAndEcho(t *testing.T) {
 	if c.Connected() {
 		t.Errorf("expected client to be disconnected")
 	}
-}
-
-func TestClient_AutoReconnect(t *testing.T) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
-	}
-
-	var activeConn atomic.Pointer[websocket.Conn]
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			return
-		}
-		activeConn.Store(conn)
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				break
-			}
-		}
-	}))
-	defer server.Close()
-
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
-
-	c := New()
-	c.SetConnectionConfig(true, 5, 3)
-
-	var connectCount atomic.Int32
-	connectCh := make(chan struct{}, 5)
-	c.OnConnect = func() {
-		connectCount.Add(1)
-		connectCh <- struct{}{}
-	}
-
-	attemptCh := make(chan int, 5)
-	c.OnReconnectAttempt = func(attempt int, maxTries int, delay time.Duration) {
-		attemptCh <- attempt
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	if err := c.Connect(ctx, wsURL, nil); err != nil {
-		t.Fatalf("initial connect failed: %v", err)
-	}
-
-	select {
-	case <-connectCh:
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for initial connect")
-	}
-
-	// Abruptly close the server-side connection to trigger unexpected drop
-	conn := activeConn.Load()
-	if conn == nil {
-		t.Fatal("no active server connection")
-	}
-	_ = conn.Close()
-
-	// Verify reconnect attempt triggers
-	select {
-	case attempt := <-attemptCh:
-		if attempt != 1 {
-			t.Errorf("expected attempt 1, got %d", attempt)
-		}
-	case <-time.After(4 * time.Second):
-		t.Fatal("timed out waiting for OnReconnectAttempt")
-	}
-
-	// Verify client reconnects successfully to the server
-	select {
-	case <-connectCh:
-		// Reconnect successful
-	case <-time.After(5 * time.Second):
-		t.Fatal("timed out waiting for reconnect OnConnect")
-	}
-
-	if !c.Connected() {
-		t.Errorf("client should be connected after auto-reconnect")
-	}
-
-	_ = c.Disconnect()
 }

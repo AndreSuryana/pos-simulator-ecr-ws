@@ -59,7 +59,6 @@ export function useWebSocket(
   }, [appConfig]);
 
   const isManualDisconnect = useRef<boolean>(false);
-  const isReconnecting = useRef<boolean>(false);
 
   // Check initial connection status & listen to status events
   useEffect(() => {
@@ -70,60 +69,28 @@ export function useWebSocket(
     const cancelConnEvent = EventsOn("connection:status", (status: string) => {
       if (status === "connected") {
         setConnected(true);
-        if (isReconnecting.current) {
-          isReconnecting.current = false;
-          toast.success("Reconnected to server", { id: "reconnect-toast" });
-        }
       } else if (status === "disconnected") {
         setConnected(false);
         if (!isManualDisconnect.current) {
-          const autoReconn = appConfig.connection?.autoReconnect ?? true;
-          if (!autoReconn) {
-            toast.error("WebSocket disconnected");
-          }
+          toast.error("WebSocket disconnected");
         }
         isManualDisconnect.current = false;
       }
     });
 
-    const cancelReconnEvent = EventsOn(
-      "connection:reconnecting",
-      (data: { attempt: number; maxTries: number }) => {
-        isReconnecting.current = true;
-        const text =
-          data.maxTries > 0
-            ? `Disconnected (Reconnect attempt #${data.attempt}/${data.maxTries})...`
-            : `Disconnected (Reconnect attempt #${data.attempt})...`;
-        toast.loading(text, { id: "reconnect-toast" });
-      },
-    );
-
-    const cancelReconnFailed = EventsOn("connection:reconnect_failed", () => {
-      isReconnecting.current = false;
-      toast.error("Reconnection failed. Maximum attempts reached.", {
-        id: "reconnect-toast",
-      });
-    });
-
     return () => {
       if (cancelConnEvent) cancelConnEvent();
-      if (cancelReconnEvent) cancelReconnEvent();
-      if (cancelReconnFailed) cancelReconnFailed();
     };
-  }, [appConfig.connection?.autoReconnect]);
+  }, []);
 
   const toggleConnect = useCallback(async () => {
     try {
       if (connected) {
         isManualDisconnect.current = true;
-        isReconnecting.current = false;
-        toast.dismiss("reconnect-toast");
         await Disconnect();
         setConnected(false);
         toast.error("WebSocket disconnected");
       } else {
-        toast.dismiss("reconnect-toast");
-        isReconnecting.current = false;
         onLog("info", `Connecting to server (${activeHostPort})...`);
         await Connect();
         setConnected(true);
@@ -131,8 +98,6 @@ export function useWebSocket(
       }
     } catch (err: any) {
       isManualDisconnect.current = false;
-      isReconnecting.current = false;
-      toast.dismiss("reconnect-toast");
       const errMsg = err?.message || err;
       onLog("error", `Connection failed: ${errMsg}`);
       toast.error(`Connection failed: ${errMsg}`);
@@ -146,10 +111,8 @@ export function useWebSocket(
       if (!matchedEnv) return;
 
       try {
-        if (connected || isReconnecting.current) {
+        if (connected) {
           isManualDisconnect.current = true;
-          isReconnecting.current = false;
-          toast.dismiss("reconnect-toast");
           await Disconnect();
           setConnected(false);
           onLog("warn", "Disconnected prior to environment switch.");

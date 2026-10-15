@@ -108,10 +108,6 @@ func (m *Manager) load() error {
 		return fmt.Errorf("parse config: %w", err)
 	}
 
-	if m.config.Connection.MaxReconnectDelaySeconds <= 0 {
-		m.config.Connection.MaxReconnectDelaySeconds = 30
-	}
-
 	return nil
 }
 
