@@ -45,7 +45,6 @@ type Update struct {
 
 // Connection holds WebSocket resilience and heartbeat preferences.
 type Connection struct {
-	PingHeartbeat            bool `json:"pingHeartbeat"`
 	PingIntervalSeconds      int  `json:"pingIntervalSeconds"`
 	AutoReconnect            bool `json:"autoReconnect"`
 	MaxReconnectDelaySeconds int  `json:"maxReconnectDelaySeconds"`
@@ -203,7 +202,6 @@ func Default() Config {
 			CheckOnStartup: true,
 		},
 		Connection: Connection{
-			PingHeartbeat:            true,
 			PingIntervalSeconds:      30,
 			AutoReconnect:            true,
 			MaxReconnectDelaySeconds: 30,

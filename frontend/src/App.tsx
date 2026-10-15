@@ -30,10 +30,9 @@ export default function App() {
     activeHostPort,
     environments,
     activeEnvId,
-    connect,
-    disconnect,
+    toggleConnect,
     switchEnvironment,
-  } = useWebSocket(appConfig, addLog);
+  } = useWebSocket(appConfig, addLog, setAppConfig);
 
   // 3. Devices hook
   const { devices, refreshDevices, pairDevice, unpairDevice } = useDevices(
@@ -58,14 +57,6 @@ export default function App() {
       });
   }, [addLog]);
 
-  const handleToggleConnect = () => {
-    if (connected) {
-      disconnect();
-    } else {
-      connect();
-    }
-  };
-
   const handleSaveConfig = async (newCfg: config.Config) => {
     try {
       await UpdateConfig(newCfg);
@@ -87,7 +78,7 @@ export default function App() {
         onTabChange={setActiveTab}
         connected={connected}
         activeHostPort={activeHostPort}
-        onToggleConnect={handleToggleConnect}
+        onToggleConnect={toggleConnect}
         onOpenSettings={() => setIsSettingsOpen(true)}
         updateInfo={updater.updateInfo}
         onOpenUpdate={updater.openDialog}

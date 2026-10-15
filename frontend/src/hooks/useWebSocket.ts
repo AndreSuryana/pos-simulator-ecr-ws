@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
-import { Connect, Disconnect, Connected } from "../../wailsjs/go/main/App";
+import {
+  Connect,
+  Disconnect,
+  Connected,
+  UpdateConfig,
+} from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { config } from "../../wailsjs/go/models";
 import { LogType } from "../components/LogConsole";
@@ -29,6 +34,7 @@ function parseHostPort(urlStr: string): string {
 export function useWebSocket(
   appConfig: config.Config,
   onLog: (type: LogType, message: string) => void,
+  onConfigChange?: (cfg: config.Config) => void,
 ) {
   const [connected, setConnected] = useState<boolean>(false);
   const [activeHostPort, setActiveHostPort] = useState<string>("N/A");
@@ -60,16 +66,21 @@ export function useWebSocket(
 
     const cancelConnEvent = EventsOn("connection:status", (status: string) => {
       if (status === "connected") {
-        setConnected(true);
-        toast.success("WebSocket connected");
-        onLog("info", "WebSocket connected");
+        setConnected((prev) => {
+          if (!prev) {
+            toast.success("Connected to server");
+            onLog("info", "Connected successfully.");
+          }
+          return true;
+        });
       } else if (status === "disconnected") {
-        setConnected(false);
-        toast("WebSocket disconnected", { icon: "🔌" });
-        onLog("warn", "WebSocket disconnected");
-      } else if (status === "registered") {
-        toast.success("POS terminal registered");
-        onLog("info", "POS terminal registered successfully");
+        setConnected((prev) => {
+          if (prev) {
+            toast.error("WebSocket disconnected");
+            onLog("warn", "Disconnected from server.");
+          }
+          return false;
+        });
       }
     });
 
@@ -78,37 +89,48 @@ export function useWebSocket(
     };
   }, [onLog]);
 
-  const connect = useCallback(async () => {
+  const toggleConnect = useCallback(async () => {
     try {
-      onLog("info", "Initiating WebSocket connection...");
-      await Connect();
+      if (connected) {
+        await Disconnect();
+        setConnected(false);
+        onLog("warn", "Disconnected from server.");
+        toast.error("WebSocket disconnected");
+      } else {
+        onLog("info", `Connecting to server (${activeHostPort})...`);
+        await Connect();
+        setConnected(true);
+        onLog("info", "Connected successfully.");
+        toast.success("Connected to server");
+      }
     } catch (err: any) {
       const errMsg = err?.message || err;
-      onLog("error", `Connection failed: ${errMsg}`);
+      onLog("error", `Connection toggle failed: ${errMsg}`);
       toast.error(`Connection failed: ${errMsg}`);
+      setConnected(false);
     }
-  }, [onLog]);
-
-  const disconnect = useCallback(async () => {
-    try {
-      onLog("info", "Disconnecting WebSocket...");
-      await Disconnect();
-    } catch (err: any) {
-      const errMsg = err?.message || err;
-      onLog("error", `Disconnect failed: ${errMsg}`);
-      toast.error(`Disconnect failed: ${errMsg}`);
-    }
-  }, [onLog]);
+  }, [connected, activeHostPort, onLog]);
 
   const switchEnvironment = useCallback(
     async (envId: string) => {
-      try {
-        const matchedEnv = environments.find((e) => e.id === envId);
-        if (!matchedEnv) return;
+      const matchedEnv = environments.find((e) => e.id === envId);
+      if (!matchedEnv) return;
 
+      try {
         if (connected) {
           await Disconnect();
           setConnected(false);
+          onLog("warn", "Disconnected prior to environment switch.");
+        }
+
+        const updatedConfig = new config.Config({
+          ...appConfig,
+          activeEnvironmentId: matchedEnv.id,
+        });
+
+        await UpdateConfig(updatedConfig);
+        if (onConfigChange) {
+          onConfigChange(updatedConfig);
         }
 
         setActiveEnvId(envId);
@@ -118,7 +140,7 @@ export function useWebSocket(
         toast.error("Failed to switch environment");
       }
     },
-    [environments, connected],
+    [environments, connected, appConfig, onConfigChange, onLog],
   );
 
   return {
@@ -126,8 +148,9 @@ export function useWebSocket(
     activeHostPort,
     environments,
     activeEnvId,
-    connect,
-    disconnect,
+    toggleConnect,
+    connect: toggleConnect,
+    disconnect: toggleConnect,
     switchEnvironment,
   };
 }

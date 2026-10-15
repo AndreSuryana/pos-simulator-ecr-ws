@@ -13,32 +13,40 @@ import (
 
 func TestClient_ConnectionConfig(t *testing.T) {
 	c := New()
-	if !c.pingHeartbeat {
-		t.Errorf("expected default pingHeartbeat to be true")
-	}
 	if c.pingInterval != defaultPingInterval {
 		t.Errorf("expected default pingInterval %v, got %v", defaultPingInterval, c.pingInterval)
 	}
 
-	c.SetConnectionConfig(false, 15, false, 45, 3)
+	c.SetConnectionConfig(15, false, 45, 3)
 
 	c.cfgMu.RLock()
-	defer c.cfgMu.RUnlock()
+	interval := c.pingInterval
+	autoReconn := c.autoReconnect
+	maxDelay := c.maxReconnectDelay
+	maxTries := c.maxReconnectTries
+	c.cfgMu.RUnlock()
 
-	if c.pingHeartbeat != false {
-		t.Errorf("expected pingHeartbeat false, got %v", c.pingHeartbeat)
+	if interval != 15*time.Second {
+		t.Errorf("expected pingInterval 15s, got %v", interval)
 	}
-	if c.pingInterval != 15*time.Second {
-		t.Errorf("expected pingInterval 15s, got %v", c.pingInterval)
+	if autoReconn != false {
+		t.Errorf("expected autoReconnect false, got %v", autoReconn)
 	}
-	if c.autoReconnect != false {
-		t.Errorf("expected autoReconnect false, got %v", c.autoReconnect)
+	if maxDelay != 45*time.Second {
+		t.Errorf("expected maxReconnectDelay 45s, got %v", maxDelay)
 	}
-	if c.maxReconnectDelay != 45*time.Second {
-		t.Errorf("expected maxReconnectDelay 45s, got %v", c.maxReconnectDelay)
+	if maxTries != 3 {
+		t.Errorf("expected maxReconnectTries 3, got %v", maxTries)
 	}
-	if c.maxReconnectTries != 3 {
-		t.Errorf("expected maxReconnectTries 3, got %v", c.maxReconnectTries)
+
+	// Setting pingInterval <= 0 disables ping
+	c.SetConnectionConfig(0, true, 30, 0)
+	c.cfgMu.RLock()
+	disabledInterval := c.pingInterval
+	c.cfgMu.RUnlock()
+
+	if disabledInterval != 0 {
+		t.Errorf("expected pingInterval 0, got %v", disabledInterval)
 	}
 }
 
@@ -86,7 +94,7 @@ func TestClient_ConnectAndEcho(t *testing.T) {
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	c := New()
-	c.SetConnectionConfig(true, 1, false, 5, 1)
+	c.SetConnectionConfig(1, false, 5, 1)
 
 	connectedCh := make(chan struct{}, 1)
 	c.OnConnect = func() {

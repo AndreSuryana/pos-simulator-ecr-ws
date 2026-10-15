@@ -65,7 +65,6 @@ func NewApp(version string) (*App, error) {
 
 	connCfg := cfg.Config().Connection
 	app.websocket.SetConnectionConfig(
-		connCfg.PingHeartbeat,
 		connCfg.PingIntervalSeconds,
 		connCfg.AutoReconnect,
 		connCfg.MaxReconnectDelaySeconds,
@@ -129,7 +128,6 @@ func (a *App) UpdateConfig(cfg config.Config) error {
 	})
 
 	a.websocket.SetConnectionConfig(
-		cfg.Connection.PingHeartbeat,
 		cfg.Connection.PingIntervalSeconds,
 		cfg.Connection.AutoReconnect,
 		cfg.Connection.MaxReconnectDelaySeconds,
@@ -459,6 +457,9 @@ func generateTransactionId(length int) string {
 // onConnect is called after the WebSocket connection has been established.
 func (a *App) onConnect() {
 	a.logger.Info("WebSocket connected")
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "connection:status", "connected")
+	}
 
 	message, err := a.register.Register()
 	if err != nil {
@@ -473,8 +474,15 @@ func (a *App) onConnect() {
 
 // onDisconnect is called when the WebSocket connection is closed.
 func (a *App) onDisconnect(err error) {
-	a.register.Reset()
-	a.devices.Reset()
+	if a.register != nil {
+		a.register.Reset()
+	}
+	if a.devices != nil {
+		a.devices.Reset()
+	}
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "connection:status", "disconnected")
+	}
 
 	if err != nil {
 		a.logger.Error("WebSocket disconnected", err)

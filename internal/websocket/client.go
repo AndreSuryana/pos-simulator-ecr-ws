@@ -62,7 +62,6 @@ type Client struct {
 
 	// Resilience configuration
 	cfgMu             sync.RWMutex
-	pingHeartbeat     bool
 	pingInterval      time.Duration
 	autoReconnect     bool
 	maxReconnectDelay time.Duration
@@ -82,7 +81,6 @@ type Client struct {
 // New creates a new WebSocket client with default resilience options.
 func New() *Client {
 	return &Client{
-		pingHeartbeat:     true,
 		pingInterval:      defaultPingInterval,
 		autoReconnect:     true,
 		maxReconnectDelay: defaultMaxDelay,
@@ -91,13 +89,13 @@ func New() *Client {
 }
 
 // SetConnectionConfig updates the heartbeat and auto-reconnect behavior.
-func (c *Client) SetConnectionConfig(pingHeartbeat bool, pingIntervalSec int, autoReconnect bool, maxDelaySec int, maxTries int) {
+// Setting pingIntervalSec to 0 or negative disables the keep-alive ping.
+func (c *Client) SetConnectionConfig(pingIntervalSec int, autoReconnect bool, maxDelaySec int, maxTries int) {
 	c.cfgMu.Lock()
 	defer c.cfgMu.Unlock()
 
-	c.pingHeartbeat = pingHeartbeat
 	if pingIntervalSec <= 0 {
-		c.pingInterval = defaultPingInterval
+		c.pingInterval = 0
 	} else {
 		c.pingInterval = time.Duration(pingIntervalSec) * time.Second
 	}
@@ -224,11 +222,10 @@ func (c *Client) Send(data []byte) error {
 
 func (c *Client) startHeartbeat(conn *websocket.Conn) {
 	c.cfgMu.RLock()
-	enabled := c.pingHeartbeat
 	interval := c.pingInterval
 	c.cfgMu.RUnlock()
 
-	if !enabled || interval <= 0 {
+	if interval <= 0 {
 		return
 	}
 

@@ -14,6 +14,24 @@ export namespace config {
 	        this.privateKey = source["privateKey"];
 	    }
 	}
+	export class Connection {
+	    pingIntervalSeconds: number;
+	    autoReconnect: boolean;
+	    maxReconnectDelaySeconds: number;
+	    maxReconnectTries: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Connection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pingIntervalSeconds = source["pingIntervalSeconds"];
+	        this.autoReconnect = source["autoReconnect"];
+	        this.maxReconnectDelaySeconds = source["maxReconnectDelaySeconds"];
+	        this.maxReconnectTries = source["maxReconnectTries"];
+	    }
+	}
 	export class Update {
 	    checkOnStartup: boolean;
 	    dismissedVersion: string;
@@ -80,26 +98,6 @@ export namespace config {
 	        this.trxIdLen = source["trxIdLen"];
 	    }
 	}
-	export class Connection {
-	    pingHeartbeat: boolean;
-	    pingIntervalSeconds: number;
-	    autoReconnect: boolean;
-	    maxReconnectDelaySeconds: number;
-	    maxReconnectTries: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Connection(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.pingHeartbeat = source["pingHeartbeat"];
-	        this.pingIntervalSeconds = source["pingIntervalSeconds"];
-	        this.autoReconnect = source["autoReconnect"];
-	        this.maxReconnectDelaySeconds = source["maxReconnectDelaySeconds"];
-	        this.maxReconnectTries = source["maxReconnectTries"];
-	    }
-	}
 	export class Config {
 	    general: General;
 	    customEnvironments: Environment[];
@@ -142,6 +140,7 @@ export namespace config {
 		    return a;
 		}
 	}
+	
 	
 	
 	
