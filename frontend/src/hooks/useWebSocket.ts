@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import {
   Connect,
@@ -58,6 +58,8 @@ export function useWebSocket(
     }
   }, [appConfig]);
 
+  const isManualDisconnect = useRef<boolean>(false);
+
   // Check initial connection status & listen to status events
   useEffect(() => {
     Connected()
@@ -66,46 +68,38 @@ export function useWebSocket(
 
     const cancelConnEvent = EventsOn("connection:status", (status: string) => {
       if (status === "connected") {
-        setConnected((prev) => {
-          if (!prev) {
-            toast.success("Connected to server");
-            onLog("info", "Connected successfully.");
-          }
-          return true;
-        });
+        setConnected(true);
       } else if (status === "disconnected") {
-        setConnected((prev) => {
-          if (prev) {
-            toast.error("WebSocket disconnected");
-            onLog("warn", "Disconnected from server.");
-          }
-          return false;
-        });
+        if (!isManualDisconnect.current) {
+          toast.error("WebSocket disconnected");
+        }
+        isManualDisconnect.current = false;
+        setConnected(false);
       }
     });
 
     return () => {
       if (cancelConnEvent) cancelConnEvent();
     };
-  }, [onLog]);
+  }, []);
 
   const toggleConnect = useCallback(async () => {
     try {
       if (connected) {
+        isManualDisconnect.current = true;
         await Disconnect();
         setConnected(false);
-        onLog("warn", "Disconnected from server.");
         toast.error("WebSocket disconnected");
       } else {
         onLog("info", `Connecting to server (${activeHostPort})...`);
         await Connect();
         setConnected(true);
-        onLog("info", "Connected successfully.");
         toast.success("Connected to server");
       }
     } catch (err: any) {
+      isManualDisconnect.current = false;
       const errMsg = err?.message || err;
-      onLog("error", `Connection toggle failed: ${errMsg}`);
+      onLog("error", `Connection failed: ${errMsg}`);
       toast.error(`Connection failed: ${errMsg}`);
       setConnected(false);
     }
@@ -118,6 +112,7 @@ export function useWebSocket(
 
       try {
         if (connected) {
+          isManualDisconnect.current = true;
           await Disconnect();
           setConnected(false);
           onLog("warn", "Disconnected prior to environment switch.");
