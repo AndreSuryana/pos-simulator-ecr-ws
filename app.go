@@ -63,6 +63,15 @@ func NewApp(version string) (*App, error) {
 	app.websocket.OnDisconnect = app.onDisconnect
 	app.websocket.OnMessage = app.onMessage
 
+	connCfg := cfg.Config().Connection
+	app.websocket.SetConnectionConfig(
+		connCfg.PingHeartbeat,
+		connCfg.PingIntervalSeconds,
+		connCfg.AutoReconnect,
+		connCfg.MaxReconnectDelaySeconds,
+		connCfg.MaxReconnectTries,
+	)
+
 	return app, nil
 }
 
@@ -118,6 +127,14 @@ func (a *App) UpdateConfig(cfg config.Config) error {
 		cfg.Update = current.Update
 		*current = cfg
 	})
+
+	a.websocket.SetConnectionConfig(
+		cfg.Connection.PingHeartbeat,
+		cfg.Connection.PingIntervalSeconds,
+		cfg.Connection.AutoReconnect,
+		cfg.Connection.MaxReconnectDelaySeconds,
+		cfg.Connection.MaxReconnectTries,
+	)
 
 	return nil
 }
@@ -599,6 +616,8 @@ func (a *App) handleTransaction(data []byte) error {
 			"message", response.DataTransaction.ResponseMessage,
 		)
 	}
+
+	runtime.EventsEmit(a.ctx, "transaction:response", response)
 
 	return nil
 }

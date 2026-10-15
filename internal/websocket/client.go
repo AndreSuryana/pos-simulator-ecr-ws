@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -22,9 +23,13 @@ var (
 	ErrNotConnected = errors.New("websocket not connected")
 )
 
-// closeGraceTimeout bounds how long Disconnect waits while writing the
-// close control frame before tearing down the connection regardless.
-const closeGraceTimeout = 2 * time.Second
+const (
+	closeGraceTimeout     = 2 * time.Second
+	defaultPingInterval   = 30 * time.Second
+	initialReconnectDelay = 2 * time.Second
+	defaultMaxDelay       = 30 * time.Second
+	pongWaitBuffer        = 10 * time.Second
+)
 
 // Client manages a single WebSocket connection.
 //
@@ -54,11 +59,58 @@ type Client struct {
 
 	// OnMessage is called for each received text/binary message.
 	OnMessage func([]byte)
+
+	// Resilience configuration
+	cfgMu             sync.RWMutex
+	pingHeartbeat     bool
+	pingInterval      time.Duration
+	autoReconnect     bool
+	maxReconnectDelay time.Duration
+	maxReconnectTries int
+
+	// Target memory for auto-reconnect
+	targetMu sync.RWMutex
+	lastURL  string
+	lastTLS  *tls.Config
+
+	// Goroutine cancellation
+	heartbeatCancel context.CancelFunc
+	reconnectCancel context.CancelFunc
+	isReconnecting  bool
 }
 
-// New creates a new WebSocket client.
+// New creates a new WebSocket client with default resilience options.
 func New() *Client {
-	return &Client{}
+	return &Client{
+		pingHeartbeat:     true,
+		pingInterval:      defaultPingInterval,
+		autoReconnect:     true,
+		maxReconnectDelay: defaultMaxDelay,
+		maxReconnectTries: 0,
+	}
+}
+
+// SetConnectionConfig updates the heartbeat and auto-reconnect behavior.
+func (c *Client) SetConnectionConfig(pingHeartbeat bool, pingIntervalSec int, autoReconnect bool, maxDelaySec int, maxTries int) {
+	c.cfgMu.Lock()
+	defer c.cfgMu.Unlock()
+
+	c.pingHeartbeat = pingHeartbeat
+	if pingIntervalSec <= 0 {
+		c.pingInterval = defaultPingInterval
+	} else {
+		c.pingInterval = time.Duration(pingIntervalSec) * time.Second
+	}
+
+	c.autoReconnect = autoReconnect
+
+	if maxDelaySec <= 0 {
+		c.maxReconnectDelay = defaultMaxDelay
+	} else {
+		c.maxReconnectDelay = time.Duration(maxDelaySec) * time.Second
+	}
+
+	c.maxReconnectTries = maxTries
 }
 
 // Connected reports whether the client is currently connected.
@@ -78,7 +130,19 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 		c.connMu.Unlock()
 		return ErrAlreadyConnected
 	}
+
+	// Cancel any active reconnect loop since user/system initiated Connect
+	if c.reconnectCancel != nil {
+		c.reconnectCancel()
+		c.reconnectCancel = nil
+	}
 	c.connMu.Unlock()
+
+	// Remember target for potential auto-reconnect
+	c.targetMu.Lock()
+	c.lastURL = url
+	c.lastTLS = tlsConfig
+	c.targetMu.Unlock()
 
 	dialer := websocket.Dialer{TLSClientConfig: tlsConfig}
 
@@ -91,6 +155,8 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 	c.conn = conn
 	c.closeOnce = &sync.Once{}
 	c.connMu.Unlock()
+
+	c.startHeartbeat(conn)
 
 	go c.readLoop(conn)
 
@@ -106,9 +172,19 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 // tears down the connection. OnDisconnect(nil) fires exactly once, even if
 // a read error is concurrently tearing down the same connection.
 func (c *Client) Disconnect() error {
-	c.connMu.RLock()
+	c.connMu.Lock()
+	// Cancel any active reconnect attempts
+	if c.reconnectCancel != nil {
+		c.reconnectCancel()
+		c.reconnectCancel = nil
+	}
+	// Cancel heartbeat
+	if c.heartbeatCancel != nil {
+		c.heartbeatCancel()
+		c.heartbeatCancel = nil
+	}
 	conn := c.conn
-	c.connMu.RUnlock()
+	c.connMu.Unlock()
 
 	if conn == nil {
 		return nil
@@ -146,6 +222,61 @@ func (c *Client) Send(data []byte) error {
 	return nil
 }
 
+func (c *Client) startHeartbeat(conn *websocket.Conn) {
+	c.cfgMu.RLock()
+	enabled := c.pingHeartbeat
+	interval := c.pingInterval
+	c.cfgMu.RUnlock()
+
+	if !enabled || interval <= 0 {
+		return
+	}
+
+	pongWait := interval + pongWaitBuffer
+	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+
+	conn.SetPongHandler(func(appData string) error {
+		slog.Debug("websocket pong received", "appData", appData)
+		_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	c.connMu.Lock()
+	if c.heartbeatCancel != nil {
+		c.heartbeatCancel()
+	}
+	c.heartbeatCancel = cancel
+	c.connMu.Unlock()
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.writeMu.Lock()
+				slog.Debug("sending websocket ping")
+				err := conn.WriteControl(
+					websocket.PingMessage,
+					[]byte{},
+					time.Now().Add(5*time.Second),
+				)
+				c.writeMu.Unlock()
+
+				if err != nil {
+					slog.Debug("failed to write ping control frame", "error", err)
+					c.finish(conn, err)
+					return
+				}
+			}
+		}
+	}()
+}
+
 // readLoop reads messages until the connection errors or is closed
 // elsewhere. conn is captured at goroutine start so a later Connect()
 // (reconnect) can never be torn down by a stale readLoop.
@@ -165,9 +296,7 @@ func (c *Client) readLoop(conn *websocket.Conn) {
 
 // finish tears down state and fires OnDisconnect exactly once for conn,
 // regardless of whether it was triggered by Disconnect() (err == nil) or a
-// read failure (err != nil). This is what prevents the double-fire/double-
-// close race between a user-initiated Disconnect and a concurrent read
-// error on the same connection.
+// read failure (err != nil).
 func (c *Client) finish(conn *websocket.Conn, err error) {
 	c.connMu.RLock()
 	once := c.closeOnce
@@ -182,6 +311,10 @@ func (c *Client) finish(conn *websocket.Conn, err error) {
 		if c.conn == conn {
 			c.conn = nil
 		}
+		if c.heartbeatCancel != nil {
+			c.heartbeatCancel()
+			c.heartbeatCancel = nil
+		}
 		c.connMu.Unlock()
 
 		_ = conn.Close()
@@ -189,5 +322,88 @@ func (c *Client) finish(conn *websocket.Conn, err error) {
 		if c.OnDisconnect != nil {
 			c.OnDisconnect(err)
 		}
+
+		if err != nil {
+			c.triggerAutoReconnect()
+		}
 	})
 }
+
+func (c *Client) triggerAutoReconnect() {
+	c.cfgMu.RLock()
+	enabled := c.autoReconnect
+	maxDelay := c.maxReconnectDelay
+	maxTries := c.maxReconnectTries
+	c.cfgMu.RUnlock()
+
+	if !enabled {
+		return
+	}
+
+	c.targetMu.RLock()
+	targetURL := c.lastURL
+	tlsCfg := c.lastTLS
+	c.targetMu.RUnlock()
+
+	if targetURL == "" {
+		return
+	}
+
+	c.connMu.Lock()
+	if c.isReconnecting {
+		c.connMu.Unlock()
+		return
+	}
+	c.isReconnecting = true
+	ctx, cancel := context.WithCancel(context.Background())
+	c.reconnectCancel = cancel
+	c.connMu.Unlock()
+
+	go func() {
+		defer func() {
+			c.connMu.Lock()
+			c.isReconnecting = false
+			c.connMu.Unlock()
+		}()
+
+		delay := initialReconnectDelay
+		attempt := 1
+
+		for {
+			if maxTries > 0 && attempt > maxTries {
+				slog.Debug("auto-reconnect reached max attempts", "maxTries", maxTries)
+				return
+			}
+
+			slog.Debug("waiting to auto-reconnect", "attempt", attempt, "delay", delay)
+
+			select {
+			case <-ctx.Done():
+				slog.Debug("auto-reconnect cancelled")
+				return
+			case <-time.After(delay):
+			}
+
+			// Check if already connected by another call
+			if c.Connected() {
+				return
+			}
+
+			slog.Debug("attempting auto-reconnect", "attempt", attempt, "url", targetURL)
+			err := c.Connect(ctx, targetURL, tlsCfg)
+			if err == nil {
+				slog.Debug("auto-reconnect succeeded", "attempt", attempt)
+				return
+			}
+
+			slog.Debug("auto-reconnect attempt failed", "attempt", attempt, "error", err)
+
+			attempt++
+			delay *= 2
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+		}
+	}()
+}
+

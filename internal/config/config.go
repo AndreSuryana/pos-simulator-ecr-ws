@@ -43,6 +43,15 @@ type Update struct {
 	DismissedVersion string `json:"dismissedVersion"`
 }
 
+// Connection holds WebSocket resilience and heartbeat preferences.
+type Connection struct {
+	PingHeartbeat            bool `json:"pingHeartbeat"`
+	PingIntervalSeconds      int  `json:"pingIntervalSeconds"`
+	AutoReconnect            bool `json:"autoReconnect"`
+	MaxReconnectDelaySeconds int  `json:"maxReconnectDelaySeconds"`
+	MaxReconnectTries        int  `json:"maxReconnectTries"`
+}
+
 // Config represents the application's persistent configuration.
 //
 // All fields are automatically persisted whenever updated.
@@ -63,6 +72,8 @@ type Config struct {
 	TLS  TLS  `json:"tls"`
 
 	Update Update `json:"update"`
+
+	Connection Connection `json:"connection"`
 }
 
 // DefaultEnvironments returns the built-in preset environments. These are
@@ -190,6 +201,13 @@ func Default() Config {
 		ActiveEnvironmentID: presets[0].ID,
 		Update: Update{
 			CheckOnStartup: true,
+		},
+		Connection: Connection{
+			PingHeartbeat:            true,
+			PingIntervalSeconds:      30,
+			AutoReconnect:            true,
+			MaxReconnectDelaySeconds: 30,
+			MaxReconnectTries:        0,
 		},
 	}
 }

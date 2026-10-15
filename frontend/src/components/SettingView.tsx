@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Save, Shield, Key, Sliders, FolderOpen, X, RefreshCw, Sparkles } from "lucide-react";
+import { Save, Radio, Key, Sliders, FolderOpen, X, RefreshCw, Sparkles } from "lucide-react";
 import { config } from "../../wailsjs/go/models";
 import { OpenFileBrowser } from "../../wailsjs/go/main/App";
 
@@ -25,6 +25,12 @@ export function SettingView({
   const [apiKey, setApiKey] = useState<string>("");
   const [privateKey, setPrivateKey] = useState<string>("");
 
+  const [pingHeartbeat, setPingHeartbeat] = useState<boolean>(true);
+  const [pingIntervalSeconds, setPingIntervalSeconds] = useState<number>(30);
+  const [autoReconnect, setAutoReconnect] = useState<boolean>(true);
+  const [maxReconnectDelaySeconds, setMaxReconnectDelaySeconds] = useState<number>(30);
+  const [maxReconnectTries, setMaxReconnectTries] = useState<number>(0);
+
   const [tlsMode, setTlsMode] = useState<"none" | "one-way" | "mutual">("none");
   const [caCertPath, setCaCertPath] = useState<string>("");
   const [clientCertPath, setClientCertPath] = useState<string>("");
@@ -43,6 +49,15 @@ export function SettingView({
       setPrivateKey(currentConfig.auth?.privateKey || "");
 
       setCheckOnStartup(currentConfig.update?.checkOnStartup ?? true);
+
+      const conn = currentConfig.connection;
+      if (conn) {
+        setPingHeartbeat(conn.pingHeartbeat ?? true);
+        setPingIntervalSeconds(conn.pingIntervalSeconds || 30);
+        setAutoReconnect(conn.autoReconnect ?? true);
+        setMaxReconnectDelaySeconds(conn.maxReconnectDelaySeconds || 30);
+        setMaxReconnectTries(conn.maxReconnectTries ?? 0);
+      }
 
       const tls = currentConfig.tls;
       if (tls) {
@@ -117,6 +132,13 @@ export function SettingView({
       update: new config.Update({
         checkOnStartup,
         dismissedVersion: currentConfig?.update?.dismissedVersion || "",
+      }),
+      connection: new config.Connection({
+        pingHeartbeat,
+        pingIntervalSeconds: Number(pingIntervalSeconds) || 30,
+        autoReconnect,
+        maxReconnectDelaySeconds: Number(maxReconnectDelaySeconds) || 30,
+        maxReconnectTries: Number(maxReconnectTries) || 0,
       }),
     });
 
@@ -230,12 +252,87 @@ export function SettingView({
             </div>
           </div>
 
-          {/* 3. TLS Security Card */}
-          <div className="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col gap-3">
+          {/* 3. Connection Card */}
+          <div className="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col gap-4">
             <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" />
-              <span>TLS Configuration</span>
+              <Radio className="w-3.5 h-3.5" />
+              <span>Connection</span>
             </h2>
+
+            {/* WebSocket Heartbeat & Auto-Reconnect settings */}
+            <div className="space-y-3 pb-3 border-b border-app-border">
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-content-primary select-none">
+                  <input
+                    type="checkbox"
+                    checked={pingHeartbeat}
+                    onChange={(e) => setPingHeartbeat(e.target.checked)}
+                    className="rounded border-app-border text-brand-primary focus:ring-brand-primary cursor-pointer"
+                  />
+                  <span className="font-medium">Enable WebSocket Ping Heartbeat</span>
+                </label>
+
+                {pingHeartbeat && (
+                  <div className="flex flex-col gap-1 pl-6">
+                    <label className="text-[11px] text-content-muted">
+                      Ping Interval (seconds)
+                    </label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={300}
+                      value={pingIntervalSeconds}
+                      onChange={(e) => setPingIntervalSeconds(Number(e.target.value))}
+                      className="w-36 bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-content-primary select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoReconnect}
+                    onChange={(e) => setAutoReconnect(e.target.checked)}
+                    className="rounded border-app-border text-brand-primary focus:ring-brand-primary cursor-pointer"
+                  />
+                  <span className="font-medium">Auto-Reconnect on Unexpected Disconnection</span>
+                </label>
+
+                {autoReconnect && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-content-muted">
+                        Max Reconnect Delay (seconds)
+                      </label>
+                      <input
+                        type="number"
+                        min={2}
+                        max={300}
+                        value={maxReconnectDelaySeconds}
+                        onChange={(e) => setMaxReconnectDelaySeconds(Number(e.target.value))}
+                        className="bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-content-muted">
+                        Max Attempts (0 for infinite)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={maxReconnectTries}
+                        onChange={(e) => setMaxReconnectTries(Number(e.target.value))}
+                        className="bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-1">
               <label className="text-xs text-content-muted font-medium">
                 TLS Mode

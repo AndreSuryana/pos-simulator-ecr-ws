@@ -80,6 +80,26 @@ export namespace config {
 	        this.trxIdLen = source["trxIdLen"];
 	    }
 	}
+	export class Connection {
+	    pingHeartbeat: boolean;
+	    pingIntervalSeconds: number;
+	    autoReconnect: boolean;
+	    maxReconnectDelaySeconds: number;
+	    maxReconnectTries: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Connection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pingHeartbeat = source["pingHeartbeat"];
+	        this.pingIntervalSeconds = source["pingIntervalSeconds"];
+	        this.autoReconnect = source["autoReconnect"];
+	        this.maxReconnectDelaySeconds = source["maxReconnectDelaySeconds"];
+	        this.maxReconnectTries = source["maxReconnectTries"];
+	    }
+	}
 	export class Config {
 	    general: General;
 	    customEnvironments: Environment[];
@@ -87,6 +107,7 @@ export namespace config {
 	    auth: Auth;
 	    tls: TLS;
 	    update: Update;
+	    connection: Connection;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -100,6 +121,7 @@ export namespace config {
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.tls = this.convertValues(source["tls"], TLS);
 	        this.update = this.convertValues(source["update"], Update);
+	        this.connection = this.convertValues(source["connection"], Connection);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
