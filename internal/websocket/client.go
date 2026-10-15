@@ -25,10 +25,8 @@ var (
 
 const (
 	closeGraceTimeout     = 2 * time.Second
-	defaultPingInterval   = 30 * time.Second
 	initialReconnectDelay = 2 * time.Second
 	defaultMaxDelay       = 30 * time.Second
-	pongWaitBuffer        = 10 * time.Second
 )
 
 // Client manages a single WebSocket connection.
@@ -60,9 +58,14 @@ type Client struct {
 	// OnMessage is called for each received text/binary message.
 	OnMessage func([]byte)
 
+	// OnReconnectAttempt is called before each auto-reconnect retry delay.
+	OnReconnectAttempt func(attempt int, maxTries int, delay time.Duration)
+
+	// OnReconnectFailed is called when auto-reconnect reaches max attempts without success.
+	OnReconnectFailed func()
+
 	// Resilience configuration
 	cfgMu             sync.RWMutex
-	pingInterval      time.Duration
 	autoReconnect     bool
 	maxReconnectDelay time.Duration
 	maxReconnectTries int
@@ -73,7 +76,6 @@ type Client struct {
 	lastTLS  *tls.Config
 
 	// Goroutine cancellation
-	heartbeatCancel context.CancelFunc
 	reconnectCancel context.CancelFunc
 	isReconnecting  bool
 }
@@ -81,24 +83,16 @@ type Client struct {
 // New creates a new WebSocket client with default resilience options.
 func New() *Client {
 	return &Client{
-		pingInterval:      defaultPingInterval,
 		autoReconnect:     true,
 		maxReconnectDelay: defaultMaxDelay,
 		maxReconnectTries: 0,
 	}
 }
 
-// SetConnectionConfig updates the heartbeat and auto-reconnect behavior.
-// Setting pingIntervalSec to 0 or negative disables the keep-alive ping.
-func (c *Client) SetConnectionConfig(pingIntervalSec int, autoReconnect bool, maxDelaySec int, maxTries int) {
+// SetConnectionConfig updates the auto-reconnect behavior.
+func (c *Client) SetConnectionConfig(autoReconnect bool, maxDelaySec int, maxTries int) {
 	c.cfgMu.Lock()
 	defer c.cfgMu.Unlock()
-
-	if pingIntervalSec <= 0 {
-		c.pingInterval = 0
-	} else {
-		c.pingInterval = time.Duration(pingIntervalSec) * time.Second
-	}
 
 	c.autoReconnect = autoReconnect
 
@@ -142,6 +136,10 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 	c.lastTLS = tlsConfig
 	c.targetMu.Unlock()
 
+	return c.dial(ctx, url, tlsConfig)
+}
+
+func (c *Client) dial(ctx context.Context, url string, tlsConfig *tls.Config) error {
 	dialer := websocket.Dialer{TLSClientConfig: tlsConfig}
 
 	conn, _, err := dialer.DialContext(ctx, url, http.Header{})
@@ -153,8 +151,6 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 	c.conn = conn
 	c.closeOnce = &sync.Once{}
 	c.connMu.Unlock()
-
-	c.startHeartbeat(conn)
 
 	go c.readLoop(conn)
 
@@ -175,11 +171,6 @@ func (c *Client) Disconnect() error {
 	if c.reconnectCancel != nil {
 		c.reconnectCancel()
 		c.reconnectCancel = nil
-	}
-	// Cancel heartbeat
-	if c.heartbeatCancel != nil {
-		c.heartbeatCancel()
-		c.heartbeatCancel = nil
 	}
 	conn := c.conn
 	c.connMu.Unlock()
@@ -220,60 +211,6 @@ func (c *Client) Send(data []byte) error {
 	return nil
 }
 
-func (c *Client) startHeartbeat(conn *websocket.Conn) {
-	c.cfgMu.RLock()
-	interval := c.pingInterval
-	c.cfgMu.RUnlock()
-
-	if interval <= 0 {
-		return
-	}
-
-	pongWait := interval + pongWaitBuffer
-	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
-
-	conn.SetPongHandler(func(appData string) error {
-		slog.Debug("websocket pong received", "appData", appData)
-		_ = conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
-	})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	c.connMu.Lock()
-	if c.heartbeatCancel != nil {
-		c.heartbeatCancel()
-	}
-	c.heartbeatCancel = cancel
-	c.connMu.Unlock()
-
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				c.writeMu.Lock()
-				slog.Debug("sending websocket ping")
-				err := conn.WriteControl(
-					websocket.PingMessage,
-					[]byte{},
-					time.Now().Add(5*time.Second),
-				)
-				c.writeMu.Unlock()
-
-				if err != nil {
-					slog.Debug("failed to write ping control frame", "error", err)
-					c.finish(conn, err)
-					return
-				}
-			}
-		}
-	}()
-}
-
 // readLoop reads messages until the connection errors or is closed
 // elsewhere. conn is captured at goroutine start so a later Connect()
 // (reconnect) can never be torn down by a stale readLoop.
@@ -307,10 +244,6 @@ func (c *Client) finish(conn *websocket.Conn, err error) {
 		c.connMu.Lock()
 		if c.conn == conn {
 			c.conn = nil
-		}
-		if c.heartbeatCancel != nil {
-			c.heartbeatCancel()
-			c.heartbeatCancel = nil
 		}
 		c.connMu.Unlock()
 
@@ -360,6 +293,7 @@ func (c *Client) triggerAutoReconnect() {
 		defer func() {
 			c.connMu.Lock()
 			c.isReconnecting = false
+			c.reconnectCancel = nil
 			c.connMu.Unlock()
 		}()
 
@@ -369,10 +303,16 @@ func (c *Client) triggerAutoReconnect() {
 		for {
 			if maxTries > 0 && attempt > maxTries {
 				slog.Debug("auto-reconnect reached max attempts", "maxTries", maxTries)
+				if c.OnReconnectFailed != nil {
+					c.OnReconnectFailed()
+				}
 				return
 			}
 
 			slog.Debug("waiting to auto-reconnect", "attempt", attempt, "delay", delay)
+			if c.OnReconnectAttempt != nil {
+				c.OnReconnectAttempt(attempt, maxTries, delay)
+			}
 
 			select {
 			case <-ctx.Done():
@@ -387,7 +327,10 @@ func (c *Client) triggerAutoReconnect() {
 			}
 
 			slog.Debug("attempting auto-reconnect", "attempt", attempt, "url", targetURL)
-			err := c.Connect(ctx, targetURL, tlsCfg)
+			dialCtx, dialCancel := context.WithTimeout(ctx, 10*time.Second)
+			err := c.dial(dialCtx, targetURL, tlsCfg)
+			dialCancel()
+
 			if err == nil {
 				slog.Debug("auto-reconnect succeeded", "attempt", attempt)
 				return
@@ -403,4 +346,3 @@ func (c *Client) triggerAutoReconnect() {
 		}
 	}()
 }
-

@@ -15,7 +15,6 @@ export namespace config {
 	    }
 	}
 	export class Connection {
-	    pingIntervalSeconds: number;
 	    autoReconnect: boolean;
 	    maxReconnectDelaySeconds: number;
 	    maxReconnectTries: number;
@@ -26,7 +25,6 @@ export namespace config {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.pingIntervalSeconds = source["pingIntervalSeconds"];
 	        this.autoReconnect = source["autoReconnect"];
 	        this.maxReconnectDelaySeconds = source["maxReconnectDelaySeconds"];
 	        this.maxReconnectTries = source["maxReconnectTries"];

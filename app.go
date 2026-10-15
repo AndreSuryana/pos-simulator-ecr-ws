@@ -62,10 +62,11 @@ func NewApp(version string) (*App, error) {
 	app.websocket.OnConnect = app.onConnect
 	app.websocket.OnDisconnect = app.onDisconnect
 	app.websocket.OnMessage = app.onMessage
+	app.websocket.OnReconnectAttempt = app.onReconnectAttempt
+	app.websocket.OnReconnectFailed = app.onReconnectFailed
 
 	connCfg := cfg.Config().Connection
 	app.websocket.SetConnectionConfig(
-		connCfg.PingIntervalSeconds,
 		connCfg.AutoReconnect,
 		connCfg.MaxReconnectDelaySeconds,
 		connCfg.MaxReconnectTries,
@@ -128,7 +129,6 @@ func (a *App) UpdateConfig(cfg config.Config) error {
 	})
 
 	a.websocket.SetConnectionConfig(
-		cfg.Connection.PingIntervalSeconds,
 		cfg.Connection.AutoReconnect,
 		cfg.Connection.MaxReconnectDelaySeconds,
 		cfg.Connection.MaxReconnectTries,
@@ -490,6 +490,23 @@ func (a *App) onDisconnect(err error) {
 	}
 
 	a.logger.Info("WebSocket disconnected")
+}
+
+// onReconnectAttempt is called during an automatic reconnection attempt.
+func (a *App) onReconnectAttempt(attempt int, maxTries int, delay time.Duration) {
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "connection:reconnecting", map[string]any{
+			"attempt":  attempt,
+			"maxTries": maxTries,
+		})
+	}
+}
+
+// onReconnectFailed is called when auto-reconnect gives up after reaching max attempts.
+func (a *App) onReconnectFailed() {
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "connection:reconnect_failed")
+	}
 }
 
 // onMessage is called for every incoming WebSocket message.

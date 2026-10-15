@@ -43,9 +43,8 @@ type Update struct {
 	DismissedVersion string `json:"dismissedVersion"`
 }
 
-// Connection holds WebSocket resilience and heartbeat preferences.
+// Connection holds WebSocket resilience preferences.
 type Connection struct {
-	PingIntervalSeconds      int  `json:"pingIntervalSeconds"`
 	AutoReconnect            bool `json:"autoReconnect"`
 	MaxReconnectDelaySeconds int  `json:"maxReconnectDelaySeconds"`
 	MaxReconnectTries        int  `json:"maxReconnectTries"`
@@ -202,7 +201,6 @@ func Default() Config {
 			CheckOnStartup: true,
 		},
 		Connection: Connection{
-			PingIntervalSeconds:      30,
 			AutoReconnect:            true,
 			MaxReconnectDelaySeconds: 30,
 			MaxReconnectTries:        0,

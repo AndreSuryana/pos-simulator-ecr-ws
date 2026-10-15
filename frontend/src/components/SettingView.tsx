@@ -25,7 +25,6 @@ export function SettingView({
   const [apiKey, setApiKey] = useState<string>("");
   const [privateKey, setPrivateKey] = useState<string>("");
 
-  const [pingIntervalSeconds, setPingIntervalSeconds] = useState<number>(30);
   const [autoReconnect, setAutoReconnect] = useState<boolean>(true);
   const [maxReconnectDelaySeconds, setMaxReconnectDelaySeconds] = useState<number>(30);
   const [maxReconnectTries, setMaxReconnectTries] = useState<number>(0);
@@ -51,7 +50,6 @@ export function SettingView({
 
       const conn = currentConfig.connection;
       if (conn) {
-        setPingIntervalSeconds(conn.pingIntervalSeconds ?? 30);
         setAutoReconnect(conn.autoReconnect ?? true);
         setMaxReconnectDelaySeconds(conn.maxReconnectDelaySeconds || 30);
         setMaxReconnectTries(conn.maxReconnectTries ?? 0);
@@ -132,7 +130,6 @@ export function SettingView({
         dismissedVersion: currentConfig?.update?.dismissedVersion || "",
       }),
       connection: new config.Connection({
-        pingIntervalSeconds: Number.isNaN(Number(pingIntervalSeconds)) ? 0 : Math.max(0, Number(pingIntervalSeconds)),
         autoReconnect,
         maxReconnectDelaySeconds: Number(maxReconnectDelaySeconds) || 30,
         maxReconnectTries: Number(maxReconnectTries) || 0,
@@ -255,81 +252,6 @@ export function SettingView({
               <Radio className="w-3.5 h-3.5" />
               <span>Connection</span>
             </h2>
-
-            {/* WebSocket Heartbeat & Auto-Reconnect settings */}
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-content-muted font-medium flex items-center justify-between">
-                  <span>Ping Heartbeat Interval (seconds)</span>
-                  <span className="text-[11px] text-content-muted font-normal">
-                    (0 to disable keep-alive ping)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={300}
-                  value={pingIntervalSeconds}
-                  onChange={(e) => setPingIntervalSeconds(Number(e.target.value))}
-                  className="w-full md:w-48 bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-content-primary select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoReconnect}
-                    onChange={(e) => setAutoReconnect(e.target.checked)}
-                    className="rounded border-app-border text-brand-primary focus:ring-brand-primary cursor-pointer"
-                  />
-                  <span className="font-medium">Auto-Reconnect</span>
-                </label>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
-                  <div className="flex flex-col gap-1">
-                    <label
-                      className={`text-[11px] font-medium transition-colors ${
-                        autoReconnect ? "text-content-muted" : "text-content-muted/50"
-                      }`}
-                    >
-                      Max Reconnect Delay (seconds)
-                    </label>
-                    <input
-                      type="number"
-                      min={2}
-                      max={300}
-                      disabled={!autoReconnect}
-                      value={maxReconnectDelaySeconds}
-                      onChange={(e) =>
-                        setMaxReconnectDelaySeconds(Number(e.target.value))
-                      }
-                      className="bg-app-base border border-app-border disabled:opacity-40 disabled:cursor-not-allowed text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label
-                      className={`text-[11px] font-medium transition-colors ${
-                        autoReconnect ? "text-content-muted" : "text-content-muted/50"
-                      }`}
-                    >
-                      Max Attempts (0 for infinite)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      disabled={!autoReconnect}
-                      value={maxReconnectTries}
-                      onChange={(e) =>
-                        setMaxReconnectTries(Number(e.target.value))
-                      }
-                      className="bg-app-base border border-app-border disabled:opacity-40 disabled:cursor-not-allowed text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div className="flex flex-col gap-1">
               <label className="text-xs text-content-muted font-medium">
@@ -455,6 +377,62 @@ export function SettingView({
                   />
                   <span>Skip TLS Verification (Insecure / Testing)</span>
                 </label>
+              </div>
+
+              {/* Auto-Reconnect Settings */}
+              <div className="border-t border-app-border pt-3 mt-3 flex flex-col gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-content-primary select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoReconnect}
+                    onChange={(e) => setAutoReconnect(e.target.checked)}
+                    className="rounded border-app-border text-brand-primary focus:ring-brand-primary cursor-pointer"
+                  />
+                  <span className="font-medium">Auto-Reconnect</span>
+                </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className={`text-[11px] font-medium transition-colors ${
+                        autoReconnect ? "text-content-muted" : "text-content-muted/50"
+                      }`}
+                    >
+                      Max Reconnect Delay (seconds)
+                    </label>
+                    <input
+                      type="number"
+                      min={2}
+                      max={300}
+                      disabled={!autoReconnect}
+                      value={maxReconnectDelaySeconds}
+                      onChange={(e) =>
+                        setMaxReconnectDelaySeconds(Number(e.target.value))
+                      }
+                      className="bg-app-base border border-app-border disabled:opacity-40 disabled:cursor-not-allowed text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className={`text-[11px] font-medium transition-colors ${
+                        autoReconnect ? "text-content-muted" : "text-content-muted/50"
+                      }`}
+                    >
+                      Max Attempts (0 for infinite)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      disabled={!autoReconnect}
+                      value={maxReconnectTries}
+                      onChange={(e) =>
+                        setMaxReconnectTries(Number(e.target.value))
+                      }
+                      className="bg-app-base border border-app-border disabled:opacity-40 disabled:cursor-not-allowed text-xs rounded-md px-2.5 py-1.5 text-content-primary font-mono focus:outline-none focus:border-brand-primary transition-colors"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
