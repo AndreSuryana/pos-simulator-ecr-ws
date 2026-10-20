@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"strings"
 	"time"
 
 	"pos-simulator-ecr-ws/internal/updater"
+	"pos-simulator-ecr-ws/internal/variant"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -43,6 +45,9 @@ func main() {
 	if version == "" {
 		version = "0.0.0-dev"
 	}
+	if suffix := variant.Active.Suffix(); suffix != "" && !strings.HasSuffix(version, suffix) {
+		version = version + suffix
+	}
 
 	app, err := NewApp(version)
 	if err != nil {
@@ -50,7 +55,7 @@ func main() {
 	}
 
 	err = wails.Run(&options.App{
-		Title:  "POS Simulator ECR WebSocket",
+		Title:  "POS Simulator",
 		Width:  1024,
 		Height: 768,
 

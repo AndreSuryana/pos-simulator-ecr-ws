@@ -7,7 +7,7 @@ import { PairingView } from "./components/PairingView";
 import { SettingView } from "./components/SettingView";
 import { UpdateDialog } from "./components/UpdateDialog";
 
-import { Config, UpdateConfig } from "../wailsjs/go/main/App";
+import { Config, UpdateConfig, AppVersion } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import { config } from "../wailsjs/go/models";
 
@@ -21,6 +21,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("transaction");
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [appConfig, setAppConfig] = useState<config.Config>(new config.Config());
+  const [appVersion, setAppVersion] = useState<string>("");
 
   // 1. Logs hook
   const { logs, addLog, clearLogs } = useLogs();
@@ -49,6 +50,10 @@ export default function App() {
 
   // Load configuration on mount
   useEffect(() => {
+    AppVersion()
+      .then((ver) => setAppVersion(ver))
+      .catch((err) => console.error("Failed to load app version:", err));
+
     Config()
       .then((loaded) => {
         if (loaded) setAppConfig(loaded);
@@ -95,6 +100,7 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         updateInfo={updater.updateInfo}
         onOpenUpdate={updater.openDialog}
+        appVersion={appVersion}
       />
 
       {/* Main Workspace */}
@@ -130,6 +136,7 @@ export default function App() {
               onClose={() => setIsSettingsOpen(false)}
               onManualCheckUpdate={updater.manualCheck}
               isCheckingUpdate={updater.isChecking}
+              appVersion={appVersion}
             />
           </div>
         </div>

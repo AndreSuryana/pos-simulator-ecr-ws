@@ -43,3 +43,5 @@ export function SetCheckOnStartup(arg1:boolean):Promise<void>;
 export function Unpair(arg1:main.UnpairRequest):Promise<void>;
 
 export function UpdateConfig(arg1:config.Config):Promise<void>;
+
+export function Variant():Promise<string>;

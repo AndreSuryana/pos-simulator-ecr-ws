@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"pos-simulator-ecr-ws/internal/variant"
 )
 
 const (
@@ -86,9 +88,10 @@ func Check(ctx context.Context, apiURL string, currentVersion string) (*Info, er
 		return nil, fmt.Errorf("decode release json: %w", err)
 	}
 
-	asset := findWindowsZipAsset(release.Assets)
+	appVariant := variant.FromVersion(currentVersion)
+	asset := findWindowsZipAsset(release.Assets, appVariant)
 	if asset == nil {
-		return nil, fmt.Errorf("no windows zip asset found in release %s", release.TagName)
+		return nil, fmt.Errorf("no windows zip asset found for variant %s in release %s", appVariant, release.TagName)
 	}
 
 	cleanLatest := strings.TrimPrefix(strings.TrimSpace(release.TagName), "v")
@@ -103,10 +106,12 @@ func Check(ctx context.Context, apiURL string, currentVersion string) (*Info, er
 
 	sha256Hash := strings.TrimPrefix(asset.Digest, "sha256:")
 
+	displayLatest := cleanLatest + appVariant.Suffix()
+
 	return &Info{
 		Available:      isAvailable,
 		CurrentVersion: cleanCurrent,
-		LatestVersion:  cleanLatest,
+		LatestVersion:  displayLatest,
 		Name:           release.Name,
 		Changelog:      release.Body,
 		ReleaseURL:     release.HTMLURL,
@@ -117,11 +122,21 @@ func Check(ctx context.Context, apiURL string, currentVersion string) (*Info, er
 	}, nil
 }
 
-func findWindowsZipAsset(assets []githubAsset) *githubAsset {
+func findWindowsZipAsset(assets []githubAsset, v variant.Type) *githubAsset {
+	targetSuffix := v.Suffix()
 	for _, a := range assets {
 		lower := strings.ToLower(a.Name)
-		if strings.HasSuffix(lower, ".zip") && strings.Contains(lower, "windows") {
-			return &a
+		if !strings.HasSuffix(lower, ".zip") || !strings.Contains(lower, "windows") {
+			continue
+		}
+		if targetSuffix != "" {
+			if strings.Contains(lower, targetSuffix) {
+				return &a
+			}
+		} else {
+			if !strings.Contains(lower, variant.BRI.Suffix()) {
+				return &a
+			}
 		}
 	}
 	return nil

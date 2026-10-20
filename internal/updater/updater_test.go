@@ -102,3 +102,63 @@ func TestCheck_NotAvailable(t *testing.T) {
 		t.Errorf("expected Available=false, got true")
 	}
 }
+
+func TestCheck_VariantIsolation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rel := githubRelease{
+			TagName: "v2.4.0",
+			Assets: []githubAsset{
+				{
+					Name:               "pos-simulator-windows-v2.4.0.zip",
+					Size:               1000,
+					Digest:             "sha256:stdhash",
+					BrowserDownloadURL: "https://example.com/pos-simulator-windows-v2.4.0.zip",
+				},
+				{
+					Name:               "pos-simulator-windows-v2.4.0-bri.zip",
+					Size:               2000,
+					Digest:             "sha256:brihash",
+					BrowserDownloadURL: "https://example.com/pos-simulator-windows-v2.4.0-bri.zip",
+				},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(rel)
+	}))
+	defer server.Close()
+
+	// Check standard client
+	stdInfo, err := Check(context.Background(), server.URL, "2.3.0")
+	if err != nil {
+		t.Fatalf("Standard check failed: %v", err)
+	}
+	if !stdInfo.Available {
+		t.Errorf("Standard expected Available=true")
+	}
+	if stdInfo.LatestVersion != "2.4.0" {
+		t.Errorf("Standard LatestVersion = %s, expected 2.4.0", stdInfo.LatestVersion)
+	}
+	if stdInfo.DownloadURL != "https://example.com/pos-simulator-windows-v2.4.0.zip" {
+		t.Errorf("Standard DownloadURL = %s, expected standard zip", stdInfo.DownloadURL)
+	}
+	if stdInfo.SHA256 != "stdhash" {
+		t.Errorf("Standard SHA256 = %s, expected stdhash", stdInfo.SHA256)
+	}
+
+	// Check BRI client
+	briInfo, err := Check(context.Background(), server.URL, "2.3.0-bri")
+	if err != nil {
+		t.Fatalf("BRI check failed: %v", err)
+	}
+	if !briInfo.Available {
+		t.Errorf("BRI expected Available=true")
+	}
+	if briInfo.LatestVersion != "2.4.0-bri" {
+		t.Errorf("BRI LatestVersion = %s, expected 2.4.0-bri", briInfo.LatestVersion)
+	}
+	if briInfo.DownloadURL != "https://example.com/pos-simulator-windows-v2.4.0-bri.zip" {
+		t.Errorf("BRI DownloadURL = %s, expected bri zip", briInfo.DownloadURL)
+	}
+	if briInfo.SHA256 != "brihash" {
+		t.Errorf("BRI SHA256 = %s, expected brihash", briInfo.SHA256)
+	}
+}
