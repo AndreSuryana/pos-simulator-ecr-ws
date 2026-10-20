@@ -5,6 +5,7 @@ import {config} from '../models';
 import {edc} from '../models';
 import {ecr} from '../models';
 import {main} from '../models';
+import {variant} from '../models';
 
 export function AppVersion():Promise<string>;
 
@@ -44,4 +45,4 @@ export function Unpair(arg1:main.UnpairRequest):Promise<void>;
 
 export function UpdateConfig(arg1:config.Config):Promise<void>;
 
-export function Variant():Promise<string>;
+export function Variant():Promise<variant.Type>;
