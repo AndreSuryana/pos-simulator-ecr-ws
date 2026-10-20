@@ -197,9 +197,37 @@ export function UpdateDialog({
               Release Notes & Changelog
             </span>
 
-            <div className="bg-app-surface border border-app-border rounded-lg p-4 max-h-56 overflow-y-auto text-xs leading-relaxed text-content-primary select-text prose prose-invert prose-xs max-w-none">
+            <div className="bg-app-surface border border-app-border rounded-lg p-4 max-h-56 overflow-y-auto text-xs leading-relaxed text-content-primary select-text">
               {info.changelog ? (
-                <Markdown>{info.changelog}</Markdown>
+                <Markdown
+                  components={{
+                    h3: ({ children }) => (
+                      <h3 className="text-xs font-semibold text-content-primary mt-3 first:mt-0 mb-1.5">
+                        {children}
+                      </h3>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc pl-4 space-y-1 text-content-primary/90 mb-2">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-xs leading-relaxed">{children}</li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-content-primary">
+                        {children}
+                      </strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="text-content-muted not-italic font-mono text-[11px]">
+                        {children}
+                      </em>
+                    ),
+                  }}
+                >
+                  {info.changelog.replace(/<!--[\s\S]*?-->/g, "")}
+                </Markdown>
               ) : (
                 <span className="text-content-muted italic">
                   No release notes provided for this version.

@@ -109,16 +109,16 @@ func TestCheck_VariantIsolation(t *testing.T) {
 			TagName: "v2.4.0",
 			Assets: []githubAsset{
 				{
+					Name:               "pos-simulator-bri-v2.4.0.zip",
+					Size:               2000,
+					Digest:             "sha256:brihash",
+					BrowserDownloadURL: "https://example.com/pos-simulator-bri-v2.4.0.zip",
+				},
+				{
 					Name:               "pos-simulator-windows-v2.4.0.zip",
 					Size:               1000,
 					Digest:             "sha256:stdhash",
 					BrowserDownloadURL: "https://example.com/pos-simulator-windows-v2.4.0.zip",
-				},
-				{
-					Name:               "pos-simulator-windows-v2.4.0-bri.zip",
-					Size:               2000,
-					Digest:             "sha256:brihash",
-					BrowserDownloadURL: "https://example.com/pos-simulator-windows-v2.4.0-bri.zip",
 				},
 			},
 		}
@@ -155,7 +155,7 @@ func TestCheck_VariantIsolation(t *testing.T) {
 	if briInfo.LatestVersion != "2.4.0-bri" {
 		t.Errorf("BRI LatestVersion = %s, expected 2.4.0-bri", briInfo.LatestVersion)
 	}
-	if briInfo.DownloadURL != "https://example.com/pos-simulator-windows-v2.4.0-bri.zip" {
+	if briInfo.DownloadURL != "https://example.com/pos-simulator-bri-v2.4.0.zip" {
 		t.Errorf("BRI DownloadURL = %s, expected bri zip", briInfo.DownloadURL)
 	}
 	if briInfo.SHA256 != "brihash" {

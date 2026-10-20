@@ -124,7 +124,7 @@ jobs:
       - name: Package Release Archives
         run: |
           zip -j "release/pos-simulator-windows-v${{ needs.build.outputs.version }}.zip" release/pos-ecr-simulator.exe
-          zip -j "release/pos-simulator-windows-v${{ needs.build.outputs.version }}-bri.zip" release/pos-ecr-simulator-bri.exe
+          zip -j "release/pos-simulator-bri-v${{ needs.build.outputs.version }}.zip" release/pos-ecr-simulator-bri.exe
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
@@ -134,7 +134,7 @@ jobs:
           target_commitish: main
           files: |
             release/pos-simulator-windows-v${{ needs.build.outputs.version }}.zip
-            release/pos-simulator-windows-v${{ needs.build.outputs.version }}-bri.zip
+            release/pos-simulator-bri-v${{ needs.build.outputs.version }}.zip
           body_path: release/CHANGELOG_RELEASE.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
