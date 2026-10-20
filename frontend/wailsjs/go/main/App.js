@@ -77,3 +77,7 @@ export function Unpair(arg1) {
 export function UpdateConfig(arg1) {
   return window['go']['main']['App']['UpdateConfig'](arg1);
 }
+
+export function Variant() {
+  return window['go']['main']['App']['Variant']();
+}

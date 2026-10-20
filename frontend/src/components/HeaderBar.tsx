@@ -16,6 +16,7 @@ interface HeaderBarProps {
   onOpenSettings: () => void;
   updateInfo?: updater.Info | null;
   onOpenUpdate?: () => void;
+  appVersion?: string;
 }
 
 export function HeaderBar({
@@ -30,6 +31,7 @@ export function HeaderBar({
   onOpenSettings,
   updateInfo,
   onOpenUpdate,
+  appVersion,
 }: HeaderBarProps) {
   // Initialize theme: Check localStorage first, then fallback to OS preference
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -73,6 +75,12 @@ export function HeaderBar({
           <span className="font-bold text-base tracking-wide text-brand-primary">
             POS Simulator
           </span>
+
+          {appVersion && (
+            <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-app-overlay border border-app-border text-content-muted select-none">
+              v{appVersion.replace(/^v/, "")}
+            </span>
+          )}
 
           {updateInfo?.available && (
             <button

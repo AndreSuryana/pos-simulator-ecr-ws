@@ -9,6 +9,7 @@ interface SettingViewProps {
   onClose?: () => void;
   onManualCheckUpdate?: () => Promise<void>;
   isCheckingUpdate?: boolean;
+  appVersion?: string;
 }
 
 export function SettingView({
@@ -17,6 +18,7 @@ export function SettingView({
   onClose,
   onManualCheckUpdate,
   isCheckingUpdate = false,
+  appVersion,
 }: SettingViewProps) {
   const [posId, setPosId] = useState<string>("");
   const [mid, setMid] = useState<string>("");
@@ -390,7 +392,7 @@ export function SettingView({
       <div className="px-4 py-3 border-t border-app-border bg-app-surface shrink-0 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-content-muted/60 font-mono select-none">
-            v{import.meta.env.VITE_APP_VERSION || "0.0.0-dev"}
+            v{(appVersion ? appVersion.replace(/^v/, "") : import.meta.env.VITE_APP_VERSION) || "0.0.0-dev"}
           </span>
 
           {onManualCheckUpdate && (

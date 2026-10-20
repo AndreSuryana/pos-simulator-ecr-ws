@@ -1,3 +1,5 @@
+//go:build !bri
+
 package ecr
 
 var ModePVS = Mode{

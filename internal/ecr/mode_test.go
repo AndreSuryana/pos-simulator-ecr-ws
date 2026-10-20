@@ -5,7 +5,7 @@ import (
 )
 
 func TestModes_Definitions(t *testing.T) {
-	modes := []Mode{ModeBRI, ModePVS}
+	modes := AvailableModes()
 
 	for _, mode := range modes {
 		if mode.ID == "" {

@@ -152,22 +152,24 @@ export function TransactionView({
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-content-muted font-medium">
-                Mode
-              </label>
-              <select
-                value={selectedMode?.ID || ""}
-                onChange={(e) => handleModeChange(e.target.value)}
-                className="bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1.5 text-content-primary focus:outline-none focus:border-brand-primary cursor-pointer transition-colors"
-              >
-                {modes.map((m) => (
-                  <option key={m.ID} value={m.ID}>
-                    {m.Label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {modes.length > 1 && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-content-muted font-medium">
+                  Mode
+                </label>
+                <select
+                  value={selectedMode?.ID || ""}
+                  onChange={(e) => handleModeChange(e.target.value)}
+                  className="bg-app-base border border-app-border text-xs rounded-md px-2.5 py-1.5 text-content-primary focus:outline-none focus:border-brand-primary cursor-pointer transition-colors"
+                >
+                  {modes.map((m) => (
+                    <option key={m.ID} value={m.ID}>
+                      {m.Label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1">
               <label className="text-xs text-content-muted font-medium">

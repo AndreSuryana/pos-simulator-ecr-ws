@@ -20,6 +20,7 @@ import (
 	"pos-simulator-ecr-ws/internal/register"
 	"pos-simulator-ecr-ws/internal/transaction"
 	"pos-simulator-ecr-ws/internal/updater"
+	"pos-simulator-ecr-ws/internal/variant"
 	"pos-simulator-ecr-ws/internal/websocket"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -124,10 +125,12 @@ func (a *App) UpdateConfig(cfg config.Config) error {
 
 // Modes returns all supported ECR modes
 func (a *App) Modes() []ecr.Mode {
-	return []ecr.Mode{
-		ecr.ModePVS,
-		ecr.ModeBRI,
-	}
+	return ecr.AvailableModes()
+}
+
+// Variant returns the active build variant of the application.
+func (a *App) Variant() variant.Type {
+	return variant.Active
 }
 
 // ----------------------------------------------------------------------------
