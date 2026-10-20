@@ -22,9 +22,9 @@ var (
 	ErrNotConnected = errors.New("websocket not connected")
 )
 
-// closeGraceTimeout bounds how long Disconnect waits while writing the
-// close control frame before tearing down the connection regardless.
-const closeGraceTimeout = 2 * time.Second
+const (
+	closeGraceTimeout = 2 * time.Second
+)
 
 // Client manages a single WebSocket connection.
 //
@@ -106,9 +106,9 @@ func (c *Client) Connect(ctx context.Context, url string, tlsConfig *tls.Config)
 // tears down the connection. OnDisconnect(nil) fires exactly once, even if
 // a read error is concurrently tearing down the same connection.
 func (c *Client) Disconnect() error {
-	c.connMu.RLock()
+	c.connMu.Lock()
 	conn := c.conn
-	c.connMu.RUnlock()
+	c.connMu.Unlock()
 
 	if conn == nil {
 		return nil
@@ -148,7 +148,7 @@ func (c *Client) Send(data []byte) error {
 
 // readLoop reads messages until the connection errors or is closed
 // elsewhere. conn is captured at goroutine start so a later Connect()
-// (reconnect) can never be torn down by a stale readLoop.
+// can never be torn down by a stale readLoop.
 func (c *Client) readLoop(conn *websocket.Conn) {
 	for {
 		_, message, err := conn.ReadMessage()
@@ -165,9 +165,7 @@ func (c *Client) readLoop(conn *websocket.Conn) {
 
 // finish tears down state and fires OnDisconnect exactly once for conn,
 // regardless of whether it was triggered by Disconnect() (err == nil) or a
-// read failure (err != nil). This is what prevents the double-fire/double-
-// close race between a user-initiated Disconnect and a concurrent read
-// error on the same connection.
+// read failure (err != nil).
 func (c *Client) finish(conn *websocket.Conn, err error) {
 	c.connMu.RLock()
 	once := c.closeOnce

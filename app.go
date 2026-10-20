@@ -442,6 +442,9 @@ func generateTransactionId(length int) string {
 // onConnect is called after the WebSocket connection has been established.
 func (a *App) onConnect() {
 	a.logger.Info("WebSocket connected")
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "connection:status", "connected")
+	}
 
 	message, err := a.register.Register()
 	if err != nil {
@@ -456,8 +459,15 @@ func (a *App) onConnect() {
 
 // onDisconnect is called when the WebSocket connection is closed.
 func (a *App) onDisconnect(err error) {
-	a.register.Reset()
-	a.devices.Reset()
+	if a.register != nil {
+		a.register.Reset()
+	}
+	if a.devices != nil {
+		a.devices.Reset()
+	}
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "connection:status", "disconnected")
+	}
 
 	if err != nil {
 		a.logger.Error("WebSocket disconnected", err)
@@ -600,16 +610,20 @@ func (a *App) handleTransaction(data []byte) error {
 		)
 	}
 
+	runtime.EventsEmit(a.ctx, "transaction:response", response)
+
 	return nil
 }
 
 // handlerError parses an ERROR message from server.
 func (a *App) handleError(data []byte) error {
 	var errResp struct {
-		Status int `json:"status"`
-		Data   struct {
-			ReasonCode int    `json:"reason_code"`
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+		Data    struct {
+			ReasonCode any    `json:"reason_code"`
 			Reason     string `json:"reason"`
+			Message    string `json:"message"`
 		} `json:"data"`
 	}
 
@@ -620,12 +634,19 @@ func (a *App) handleError(data []byte) error {
 
 	baseMsg := errResp.Data.Reason
 	if baseMsg == "" {
-		baseMsg = "An unknown server error occurred"
+		baseMsg = errResp.Data.Message
+	}
+	if baseMsg == "" {
+		baseMsg = errResp.Message
+	}
+	if baseMsg == "" {
+		baseMsg = "Unknown error"
 	}
 
 	var finalMsg string
-	if errResp.Data.ReasonCode != 0 {
-		finalMsg = fmt.Sprintf("%s (Code: %d)", baseMsg, errResp.Data.ReasonCode)
+	codeStr := fmt.Sprintf("%v", errResp.Data.ReasonCode)
+	if errResp.Data.ReasonCode != nil && codeStr != "0" && codeStr != "" && codeStr != "<nil>" {
+		finalMsg = fmt.Sprintf("%s (Code: %v)", baseMsg, errResp.Data.ReasonCode)
 	} else if errResp.Status != 0 {
 		finalMsg = fmt.Sprintf("%s (Status: %d)", baseMsg, errResp.Status)
 	} else {

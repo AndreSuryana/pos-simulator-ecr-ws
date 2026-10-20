@@ -1,395 +1,100 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { HeaderBar, ActiveTab } from "./components/HeaderBar";
-import { LogConsole, LogEntry, LogType } from "./components/LogConsole";
+import { LogConsole } from "./components/LogConsole";
 import { TransactionView } from "./components/TransactionView";
 import { PairingView } from "./components/PairingView";
 import { SettingView } from "./components/SettingView";
+import { UpdateDialog } from "./components/UpdateDialog";
 
-import {
-  Connect,
-  Disconnect,
-  Connected,
-  Config,
-  UpdateConfig,
-  RefreshDevices,
-  Pair,
-  Unpair,
-  SendTransaction,
-  CheckForUpdate,
-  DownloadAndInstall,
-  CancelUpdate,
-  DismissUpdate,
-} from "../wailsjs/go/main/App";
-
+import { Config, UpdateConfig } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
-import { config, edc, main, updater } from "../wailsjs/go/models";
-import {
-  UpdateDialog,
-  UpdateProgress,
-  UpdateStage,
-} from "./components/UpdateDialog";
+import { config } from "../wailsjs/go/models";
 
-const PRESET_ENVIRONMENTS: config.Environment[] = [
-  new config.Environment({
-    id: "local",
-    name: "Local Development",
-    url: "wss://192.168.202.110:55567/ws_api_pos/v1/api/",
-  }),
-  new config.Environment({
-    id: "public-dev",
-    name: "Public Development",
-    url: "wss://182.253.33.106:55571/ws_api_pos/v1/api/",
-  }),
-];
+import { useLogs } from "./hooks/useLogs";
+import { useWebSocket } from "./hooks/useWebSocket";
+import { useDevices } from "./hooks/useDevices";
+import { useTransactions } from "./hooks/useTransactions";
+import { useUpdater } from "./hooks/useUpdater";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("transaction");
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [connected, setConnected] = useState<boolean>(false);
-  const [activeHostPort, setActiveHostPort] = useState<string>("N/A");
+  const [appConfig, setAppConfig] = useState<config.Config>(new config.Config());
 
-  const [environments, setEnvironments] =
-    useState<config.Environment[]>(PRESET_ENVIRONMENTS);
-  const [appConfig, setAppConfig] = useState<config.Config>(
-    new config.Config(),
+  // 1. Logs hook
+  const { logs, addLog, clearLogs } = useLogs();
+
+  // 2. WebSocket hook
+  const {
+    connected,
+    activeHostPort,
+    environments,
+    activeEnvId,
+    toggleConnect,
+    switchEnvironment,
+  } = useWebSocket(appConfig, addLog, setAppConfig);
+
+  // 3. Devices hook
+  const { devices, refreshDevices, pairDevice, unpairDevice } = useDevices(
+    connected,
+    addLog,
   );
-  const [devices, setDevices] = useState<edc.Device[]>([]);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  // Auto-update states
-  const [updateInfo, setUpdateInfo] = useState<updater.Info | null>(null);
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState<boolean>(false);
-  const [updateStage, setUpdateStage] = useState<UpdateStage>("idle");
-  const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
+  // 4. Transactions hook
+  const { sendTransaction } = useTransactions(connected, addLog);
 
-  const addLog = useCallback((type: LogType, message: string) => {
-    const timestamp = new Date().toLocaleTimeString("en-US", { hour12: false });
-    const newEntry: LogEntry = {
-      id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      timestamp,
-      type,
-      message,
-    };
-    setLogs((prev) => [...prev, newEntry]);
-  }, []);
+  // 5. Updater hook
+  const updater = useUpdater(appConfig, connected, setAppConfig);
 
-  const parseHostPort = (urlStr: string) => {
-    try {
-      return new URL(urlStr).host;
-    } catch {
-      return urlStr;
-    }
-  };
-
-  const refreshDevices = useCallback(async () => {
-    if (!connected) return;
-    try {
-      await RefreshDevices();
-    } catch (err: any) {
-      addLog(
-        "error",
-        `Failed to request device refresh: ${err?.message || err}`,
-      );
-    }
+  // Load configuration on mount
+  useEffect(() => {
+    Config()
+      .then((loaded) => {
+        if (loaded) setAppConfig(loaded);
+      })
+      .catch((err) => {
+        addLog("error", `Failed to load config: ${err?.message || err}`);
+      });
   }, [addLog]);
 
+  // Listen for server error events
   useEffect(() => {
-    async function initApp() {
-      try {
-        const loadedConfig = await Config();
-        if (loadedConfig) {
-          setAppConfig(loadedConfig);
-
-          const allEnvs = [
-            ...PRESET_ENVIRONMENTS,
-            ...(loadedConfig.customEnvironments || []),
-          ];
-          setEnvironments(allEnvs);
-
-          const activeEnv =
-            allEnvs.find((e) => e.id === loadedConfig.activeEnvironmentId) ||
-            allEnvs[0];
-          if (activeEnv) {
-            setActiveHostPort(parseHostPort(activeEnv.url));
-          }
-
-          // Check for software updates on launch if enabled
-          const shouldCheckOnStartup =
-            loadedConfig.update?.checkOnStartup ?? true;
-          if (shouldCheckOnStartup) {
-            try {
-              const uInfo = await CheckForUpdate();
-              if (uInfo && uInfo.available) {
-                setUpdateInfo(uInfo);
-                const dismissed = loadedConfig.update?.dismissedVersion || "";
-                if (uInfo.latestVersion !== dismissed) {
-                  setIsUpdateDialogOpen(true);
-                }
-              }
-            } catch (uErr) {
-              console.debug("Startup update check failed:", uErr);
-            }
-          }
-        }
-
-        const isConn = await Connected();
-        setConnected(isConn);
-
-        await refreshDevices();
-      } catch (err: any) {
-        addLog("error", `Initialization error: ${err?.message || err}`);
-      }
-    }
-
-    initApp();
-
-    const unsubscribeDevices = EventsOn(
-      "devices:updated",
-      (updatedDevices: edc.Device[]) => {
-        setDevices(updatedDevices || []);
-      },
-    );
-
-    const unsubscribeLog = EventsOn(
-      "log",
-      (data: { type: LogType; message: string }) => {
-        addLog(data.type || "info", data.message);
-      },
-    );
-
-    const unsubscribeStatus = EventsOn("status:change", (status: boolean) => {
-      setConnected(status);
-      addLog(
-        status ? "info" : "warn",
-        status ? "WebSocket Connected" : "WebSocket Disconnected",
-      );
+    const cancelErrorEvent = EventsOn("server:error", (errMsg: string) => {
+      toast.error(errMsg);
+      addLog("error", errMsg);
     });
 
-    const unsubscribeServerError = EventsOn(
-      "server:error",
-      (errMsg: string) => {
-        toast.error(errMsg);
-        addLog("error", errMsg);
-      },
-    );
-
-    const unsubscribeUpdateProgress = EventsOn(
-      "update:progress",
-      (p: UpdateProgress) => {
-        setUpdateProgress(p);
-        if (p?.stage) {
-          setUpdateStage(p.stage as UpdateStage);
-        }
-      },
-    );
-
     return () => {
-      if (unsubscribeDevices) unsubscribeDevices();
-      if (unsubscribeLog) unsubscribeLog();
-      if (unsubscribeStatus) unsubscribeStatus();
-      if (unsubscribeServerError) unsubscribeServerError();
-      if (unsubscribeUpdateProgress) unsubscribeUpdateProgress();
+      if (cancelErrorEvent) cancelErrorEvent();
     };
-  }, [addLog, refreshDevices]);
-
-  const handleToggleConnect = async () => {
-    try {
-      if (connected) {
-        await Disconnect();
-        setConnected(false);
-        addLog("warn", "Disconnected from server.");
-        toast.error("WebSocket disconnected");
-      } else {
-        addLog("info", `Connecting to server (${activeHostPort})...`);
-        await Connect();
-        setConnected(true);
-        addLog("info", "Connected successfully.");
-        toast.success("Connected to server");
-      }
-    } catch (err: any) {
-      const errMsg = err?.message || err;
-      addLog("error", `Connection toggle failed: ${errMsg}`);
-      toast.error(`Connection failed: ${errMsg}`);
-      setConnected(false);
-    }
-  };
-
-  const handleEnvironmentChange = async (envId: string) => {
-    const matchedEnv = environments.find((e) => e.id === envId);
-    if (!matchedEnv) return;
-
-    try {
-      if (connected) {
-        await Disconnect();
-        setConnected(false);
-        addLog("warn", "Disconnected prior to environment switch.");
-      }
-
-      const updatedConfig = new config.Config({
-        ...appConfig,
-        activeEnvironmentId: matchedEnv.id,
-      });
-
-      await UpdateConfig(updatedConfig);
-
-      setAppConfig(updatedConfig);
-      setActiveHostPort(parseHostPort(matchedEnv.url));
-
-      toast.success(`Environment changed to ${matchedEnv.name}`);
-    } catch (err: any) {
-      toast.error("Failed to switch environment");
-    }
-  };
-
-  // Pair Device Handler
-  const handlePairDevice = async (req: main.PairRequest) => {
-    try {
-      await Pair(req);
-
-      addLog("received", `Successfully paired ${req.edcId}`);
-      toast.success(`Successfully paired ${req.edcId}`);
-
-      await refreshDevices();
-    } catch (err: any) {
-      var errMsg = err?.message || err;
-      addLog("error", `Pairing failed: ${errMsg}`);
-      toast.error(`Pairing failed: ${errMsg}`);
-    }
-  };
-
-  // Unpair Device Handler
-  const handleUnpairDevice = async (req: main.UnpairRequest) => {
-    try {
-      await Unpair(req);
-
-      addLog("received", `Successfully unpaired ${req.edcId}`);
-      toast.success(`Unpaired ${req.edcId}`);
-
-      await refreshDevices();
-    } catch (err: any) {
-      var errMsg = err?.message || err;
-      addLog("error", `Unpairing failed: ${errMsg}`);
-      toast.error(`Unpairing failed: ${errMsg}`);
-    }
-  };
-
-  // Send Transaction Handler
-  const handleSendTransaction = async (req: main.SendTransactionRequest) => {
-    try {
-      await SendTransaction(req);
-      addLog("received", `Transaction request sent to backend successfully.`);
-    } catch (err: any) {
-      var errMsg = err?.message || err;
-      addLog("error", `Transaction dispatch failed: ${errMsg}`);
-      toast.error(`Transaction failed: ${errMsg}`);
-    }
-  };
+  }, [addLog]);
 
   const handleSaveConfig = async (newCfg: config.Config) => {
     try {
       await UpdateConfig(newCfg);
       setAppConfig(newCfg);
-
-      addLog("info", "Configuration saved to backend successfully.");
-      toast.success("Settings saved");
-
-      setIsSettingsOpen(false); // Close modal on save
+      setIsSettingsOpen(false);
+      toast.success("Settings saved successfully");
     } catch (err: any) {
-      addLog("error", `Failed to save configuration: ${err?.message || err}`);
-      toast.error("Failed to save settings");
+      toast.error(`Failed to save settings: ${err?.message || err}`);
     }
   };
-
-  // Manual Check For Updates (e.g. from Settings)
-  const handleManualCheckUpdate = async () => {
-    setIsCheckingUpdate(true);
-    try {
-      const uInfo = await CheckForUpdate();
-      setUpdateInfo(uInfo);
-      if (uInfo && uInfo.available) {
-        setIsUpdateDialogOpen(true);
-        toast.success(`Update v${uInfo.latestVersion} is available!`);
-      } else {
-        toast.success("You are running the latest version.");
-      }
-    } catch (err: any) {
-      toast.error(`Failed to check for updates: ${err?.message || err}`);
-    } finally {
-      setIsCheckingUpdate(false);
-    }
-  };
-
-  // Start Download and Install
-  const handleStartDownload = async () => {
-    if (connected) {
-      toast.error("Please disconnect the WebSocket before updating.");
-      return;
-    }
-
-    setUpdateStage("downloading");
-    setUpdateError(null);
-    try {
-      await DownloadAndInstall();
-    } catch (err: any) {
-      const msg = err?.message || String(err);
-      setUpdateStage("error");
-      setUpdateError(msg);
-      toast.error(`Update failed: ${msg}`);
-    }
-  };
-
-  // Cancel in-flight download
-  const handleCancelUpdate = async () => {
-    try {
-      await CancelUpdate();
-      setUpdateStage("idle");
-      setUpdateProgress(null);
-      toast("Update cancelled.");
-    } catch (err: any) {
-      console.error("Cancel update error:", err);
-    }
-  };
-
-  // Dismiss update dialog for current version
-  const handleDismissUpdate = async () => {
-    setIsUpdateDialogOpen(false);
-    if (updateInfo?.latestVersion) {
-      try {
-        await DismissUpdate(updateInfo.latestVersion);
-        setAppConfig(
-          (prev) =>
-            new config.Config({
-              ...prev,
-              update: new config.Update({
-                checkOnStartup: prev.update?.checkOnStartup ?? true,
-                dismissedVersion: updateInfo.latestVersion,
-              }),
-            }),
-        );
-      } catch (err) {
-        console.error("Failed to persist update dismissal:", err);
-      }
-    }
-  };
-
 
   return (
     <div className="flex flex-col h-screen w-screen bg-app-base text-content-primary overflow-hidden font-sans relative">
       <HeaderBar
         environments={environments}
-        activeEnvId={appConfig.activeEnvironmentId || "local"}
-        onEnvironmentChange={handleEnvironmentChange}
+        activeEnvId={appConfig.activeEnvironmentId || activeEnvId}
+        onEnvironmentChange={switchEnvironment}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         connected={connected}
         activeHostPort={activeHostPort}
-        onToggleConnect={handleToggleConnect}
+        onToggleConnect={toggleConnect}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        updateInfo={updateInfo}
-        onOpenUpdate={() => setIsUpdateDialogOpen(true)}
+        updateInfo={updater.updateInfo}
+        onOpenUpdate={updater.openDialog}
       />
 
       {/* Main Workspace */}
@@ -399,8 +104,8 @@ export default function App() {
             devices={devices}
             connected={connected}
             onRefreshDevices={refreshDevices}
-            onPairDevice={handlePairDevice as any}
-            onUnpairDevice={handleUnpairDevice as any}
+            onPairDevice={pairDevice as any}
+            onUnpairDevice={unpairDevice as any}
           />
         )}
         {activeTab === "transaction" && (
@@ -408,12 +113,12 @@ export default function App() {
             devices={devices}
             connected={connected}
             onRefreshDevices={refreshDevices}
-            onSendTransaction={handleSendTransaction as any}
+            onSendTransaction={sendTransaction as any}
           />
         )}
       </main>
 
-      <LogConsole logs={logs} onClear={() => setLogs([])} />
+      <LogConsole logs={logs} onClear={clearLogs} />
 
       {/* Settings Modal Overlay */}
       {isSettingsOpen && (
@@ -423,24 +128,24 @@ export default function App() {
               currentConfig={appConfig}
               onSaveConfig={handleSaveConfig}
               onClose={() => setIsSettingsOpen(false)}
-              onManualCheckUpdate={handleManualCheckUpdate}
-              isCheckingUpdate={isCheckingUpdate}
+              onManualCheckUpdate={updater.manualCheck}
+              isCheckingUpdate={updater.isChecking}
             />
           </div>
         </div>
       )}
 
       {/* Update Dialog Overlay */}
-      {isUpdateDialogOpen && updateInfo && (
+      {updater.isDialogOpen && updater.updateInfo && (
         <UpdateDialog
-          info={updateInfo}
-          stage={updateStage}
-          progress={updateProgress}
-          errorMessage={updateError}
+          info={updater.updateInfo}
+          stage={updater.stage}
+          progress={updater.progress}
+          errorMessage={updater.errorMessage}
           connected={connected}
-          onDownload={handleStartDownload}
-          onCancel={handleCancelUpdate}
-          onClose={handleDismissUpdate}
+          onDownload={updater.startDownload}
+          onCancel={updater.cancelUpdate}
+          onClose={updater.dismissUpdate}
         />
       )}
 
