@@ -126,7 +126,7 @@ func findWindowsZipAsset(assets []githubAsset, v variant.Type) *githubAsset {
 	targetSuffix := v.Suffix()
 	for _, a := range assets {
 		lower := strings.ToLower(a.Name)
-		if !strings.HasSuffix(lower, ".zip") || !strings.Contains(lower, "windows") {
+		if !strings.HasSuffix(lower, ".zip") {
 			continue
 		}
 		if targetSuffix != "" {
@@ -134,7 +134,7 @@ func findWindowsZipAsset(assets []githubAsset, v variant.Type) *githubAsset {
 				return &a
 			}
 		} else {
-			if !strings.Contains(lower, variant.BRI.Suffix()) {
+			if strings.Contains(lower, "windows") && !strings.Contains(lower, variant.BRI.Suffix()) {
 				return &a
 			}
 		}
