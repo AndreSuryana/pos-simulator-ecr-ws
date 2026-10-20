@@ -230,12 +230,13 @@ export function SettingView({
             </div>
           </div>
 
-          {/* 3. TLS Security Card */}
+          {/* 3. TLS Configuration Card */}
           <div className="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col gap-3">
             <h2 className="text-xs font-semibold text-brand-primary uppercase tracking-wider flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" />
               <span>TLS Configuration</span>
             </h2>
+
             <div className="flex flex-col gap-1">
               <label className="text-xs text-content-muted font-medium">
                 TLS Mode

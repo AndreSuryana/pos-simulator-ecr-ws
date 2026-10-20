@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Search, X } from "lucide-react";
 
 export type LogType = "sent" | "received" | "info" | "warn" | "error";
 
@@ -28,6 +28,7 @@ const LOG_TYPE_STYLES: Record<LogType, { icon: string; colorClass: string }> = {
 };
 
 export function LogConsole({ logs, onClear }: LogConsoleProps) {
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number>(0);
   const dragStartHeight = useRef<number>(0);
@@ -60,6 +61,11 @@ export function LogConsole({ logs, onClear }: LogConsoleProps) {
 
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const heightRef = useRef<number>(height);
+
+  const filteredLogs = logs.filter((log) => {
+    if (!searchTerm.trim()) return true;
+    return log.message.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   useEffect(() => {
     heightRef.current = height;
@@ -155,18 +161,41 @@ export function LogConsole({ logs, onClear }: LogConsoleProps) {
             Terminal Logs
           </span>
           <span className="bg-app-overlay text-content-muted px-2 py-0.5 rounded-full text-[10px] font-mono">
-            {logs.length}
+            {filteredLogs.length}{searchTerm ? ` / ${logs.length}` : ""}
           </span>
         </div>
 
-        <button
-          onClick={onClear}
-          className="flex items-center gap-1 hover:text-content-primary text-content-muted text-xs px-2 py-1 rounded bg-app-overlay/80 hover:bg-content-muted/20 transition cursor-pointer"
-          title="Clear Logs"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span>Clear</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-app-base border border-app-border rounded px-2 py-1 text-xs focus-within:border-brand-primary transition-colors">
+            <Search className="w-3.5 h-3.5 text-content-muted shrink-0" />
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-transparent border-none outline-none text-content-primary placeholder:text-content-muted w-28 focus:w-44 transition-all font-mono text-[11px]"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="text-content-muted hover:text-content-primary cursor-pointer"
+                title="Clear Search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={onClear}
+            className="flex items-center gap-1 hover:text-content-primary text-content-muted text-xs px-2 py-1 rounded bg-app-overlay/80 hover:bg-content-muted/20 transition cursor-pointer"
+            title="Clear Logs"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear</span>
+          </button>
+        </div>
       </div>
 
       {/* Log Stream */}
@@ -174,12 +203,12 @@ export function LogConsole({ logs, onClear }: LogConsoleProps) {
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-3 space-y-1 font-mono select-text"
       >
-        {logs.length === 0 ? (
+        {filteredLogs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-content-muted/50 italic select-none">
-            No logs recorded yet.
+            {logs.length === 0 ? "No logs recorded yet." : "No logs matching search query."}
           </div>
         ) : (
-          logs.map((log) => {
+          filteredLogs.map((log) => {
             const style = LOG_TYPE_STYLES[log.type] || LOG_TYPE_STYLES.info;
             return (
               <div key={log.id} className="leading-relaxed py-0.5">
