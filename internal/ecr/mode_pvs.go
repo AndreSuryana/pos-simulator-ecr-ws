@@ -7,6 +7,7 @@ var ModePVS = Mode{
 	Label: "PVS",
 	TransactionTypes: []TransactionType{
 		{ID: "saleRegular", Label: "Sale (Regular)", Fields: []Field{Amount, TipAmount, TransactionID}},
+		{ID: "saleRegularInstallment", Label: "Sale (Regular Installment)", Fields: []Field{Amount, TipAmount, TransactionID}},
 		{ID: "saleInstallment", Label: "Sale (Installment)", Fields: []Field{Amount, Tenor, Plan, TransactionID}},
 		{ID: "edcPayment", Label: "Sale (Select Payment Method)", Fields: []Field{Amount, TipAmount, TransactionID}},
 		{ID: "voidRegular", Label: "Void (Regular)", Fields: []Field{TraceNumber, TransactionID}},
